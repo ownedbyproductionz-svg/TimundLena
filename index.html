@@ -63,7 +63,14 @@
     .crown{display:inline-block;animation:crownBounce 2s ease-in-out infinite}
 
     /* Map & Goals */
-    @keyframes unlockPop{0%{transform:scale(0.5);opacity:0}70%{transform:scale(1.3)}100%{transform:scale(1);opacity:1}}
+    @keyframes spinPick{0%{transform:scale(1)}30%{transform:scale(1.08)}60%{transform:scale(0.96)}100%{transform:scale(1)}}
+    @keyframes strikeThrough{from{width:0}to{width:100%}}
+    .activity-item{display:flex;align-items:center;gap:"12px";padding:12px 14px;border-radius:10px;background:#0d0d1a;border:1px solid #1a1a2e;margin-bottom:8px;transition:all 0.2s;cursor:pointer}
+    .activity-item:hover{border-color:#2a2a4a;transform:translateX(3px)}
+    .activity-item.done-item{opacity:0.45;background:#080808}
+    .activity-item.done-item:hover{opacity:0.6}
+    .picked-card{animation:spinPick 0.5s ease}
+    @keyframes rollNumbers{0%,100%{transform:translateY(0)}25%{transform:translateY(-4px)}75%{transform:translateY(4px)}}
     @keyframes pinFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
     @keyframes confetti{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(-70px) rotate(360deg);opacity:0}}
     .map-wrap{position:relative;border-radius:12px;overflow:hidden;border:1px solid #1a1a2e}
@@ -233,6 +240,54 @@ function svgBar(data,keys,colors,W=640,H=130){
 // State
 let deps=[],tab="overview",showForm=false,person="Tim",amount="",month=new Date().getMonth()+1,year=new Date().getFullYear(),note="",delId=null,extra=100,loading=true;
 
+// Activities state
+let activities=[];
+let pickedActivity=null;
+let showActivityForm=false;
+let newActivityName="";
+let isSpinning=false;
+
+const DEFAULT_ACTIVITIES=[
+  "Minigolf spielen","Kino Abend","Wandern gehen","Neues Restaurant ausprobieren",
+  "Bowling","Spieleabend","Tagesausflug","Fahrrad Tour","Picknick im Park",
+  "Museum besuchen","Kochen Kurs","Konzert besuchen","Zoo Besuch","Escape Room",
+  "Karaoke Abend","Spontan Wochenende","Sonnenuntergang schauen","Flohmarkt besuchen",
+  "Kletterpark","Bouldern"
+];
+
+const sbActivities={
+  async all(){
+    const r=await fetch(`${SURL}/rest/v1/activities?select=*&order=name.asc`,{headers:{apikey:SKEY,Authorization:`Bearer ${SKEY}`}});
+    if(!r.ok)throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  },
+  async save(a){
+    await fetch(`${SURL}/rest/v1/activities?id=eq.${a.id}`,{method:"DELETE",headers:{apikey:SKEY,Authorization:`Bearer ${SKEY}`}});
+    await fetch(`${SURL}/rest/v1/activities`,{method:"POST",headers:{apikey:SKEY,Authorization:`Bearer ${SKEY}`,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify(a)});
+  },
+  async del(id){await fetch(`${SURL}/rest/v1/activities?id=eq.${id}`,{method:"DELETE",headers:{apikey:SKEY,Authorization:`Bearer ${SKEY}`}});}
+};
+
+async function loadActivities(){
+  try{
+    const remote=await sbActivities.all();
+    if(remote&&remote.length>0){
+      activities=remote;
+      localStorage.setItem("sparplan_activities",JSON.stringify(activities));
+      return;
+    }
+  }catch(e){console.warn("Supabase activities fehler:",e);}
+  // Nur Fallback wenn Supabase komplett down
+  const local=localStorage.getItem("sparplan_activities");
+  if(local){try{activities=JSON.parse(local);return;}catch(e){}}
+  activities=DEFAULT_ACTIVITIES.map(name=>({id:uid(),name,done:false,doneAt:null}));
+  localStorage.setItem("sparplan_activities",JSON.stringify(activities));
+}
+
+function saveActivitiesLocal(){
+  localStorage.setItem("sparplan_activities",JSON.stringify(activities));
+}
+
 // Goals state
 let goals=[];
 let goalDeleteId=null;
@@ -259,9 +314,23 @@ const sbGoals={
 };
 
 async function loadGoals(){
-  const remote=await sbGoals.all();
-  if(remote&&remote.length>0){goals=remote.map(g=>({...g,tasks:JSON.parse(g.tasks||"[]"),tasksDone:JSON.parse(g.tasksDone||"[]")}));}
-  else{goals=[...DEFAULT_GOALS];for(const g of goals){const gs={...g,tasks:JSON.stringify(g.tasks),tasksDone:JSON.stringify(g.tasksDone)};await sbGoals.save(gs);}}
+  try{
+    const remote=await sbGoals.all();
+    if(remote&&remote.length>0){
+      goals=remote.map(g=>({...g,tasks:JSON.parse(g.tasks||"[]"),tasksDone:JSON.parse(g.tasksDone||"[]")}));
+      localStorage.setItem("sparplan_goals",JSON.stringify(goals));
+      return;
+    }
+  }catch(e){console.warn("Supabase goals fehler:",e);}
+  // Nur Fallback wenn Supabase nicht erreichbar
+  const local=localStorage.getItem("sparplan_goals");
+  if(local){try{goals=JSON.parse(local);return;}catch(e){}}
+  goals=[...DEFAULT_GOALS];
+  localStorage.setItem("sparplan_goals",JSON.stringify(goals));
+}
+
+function saveGoalsLocal(){
+  localStorage.setItem("sparplan_goals",JSON.stringify(goals));
 }
 
 function isUnlocked(g,total){
@@ -276,6 +345,7 @@ async function toggleTask(goalId,task,total){
   else g.tasksDone=[...g.tasksDone,task];
   g.unlocked=isUnlocked(g,total);
   await sbGoals.save({...g,tasks:JSON.stringify(g.tasks),tasksDone:JSON.stringify(g.tasksDone)});
+  saveGoalsLocal();
   if(g.unlocked)spawnConfetti();
   render();
 }
@@ -541,7 +611,7 @@ function render(){
 
   // Tab bar
   const tb=h("div",{style:{display:"flex",gap:"6px",marginBottom:"20px",flexWrap:"wrap"}});
-  [["overview","📊 Übersicht"],["forecast","🔮 Prognose"],["vs","💡 ETF vs Schublade"],["goals","🗺️ Ziele"],["history","📋 Verlauf"]].forEach(([t,l])=>{
+  [["overview","📊 Übersicht"],["forecast","🔮 Prognose"],["vs","💡 ETF vs Schublade"],["goals","🗺️ Ziele"],["activities","🎲 Unternehmungen"],["history","📋 Verlauf"]].forEach(([t,l])=>{
     const active=tab===t;
     const btn=h("button",{class:`btn${active?" tab-active":""}`,style:{flex:"1",minWidth:"100px",padding:"9px 6px",borderRadius:"8px",fontSize:"11px",letterSpacing:"0.06em",border:`1px solid ${active?"#2a2a4a":"#1a1a2e"}`,background:active?"#111122":"#0a0a12",color:active?"#fff":"#333",fontWeight:active?"600":"400"},onclick:()=>{tab=t;render()}},l);
     tb.appendChild(btn);
@@ -714,6 +784,7 @@ function render(){
           const ng={id:uid(),name:newGoalName.trim(),emoji:newGoalEmoji,budget:newGoalBudget,lat:newGoalLat,lng:newGoalLng,tasks:["Flüge buchen","Hotel buchen"],unlocked:false,tasksDone:[]};
           goals.push(ng);
           await sbGoals.save({...ng,tasks:JSON.stringify(ng.tasks),tasksDone:JSON.stringify(ng.tasksDone)});
+          saveGoalsLocal();
           newGoalName="";newGoalLat=20;newGoalLng=15;showGoalForm=false;render();
         }},"💾 ZIEL SPEICHERN"));
       mapCard.appendChild(ngf);
@@ -836,6 +907,113 @@ function render(){
   }
 
 
+  if(tab==="activities"){
+    const todo=activities.filter(a=>!a.done);
+    const done=activities.filter(a=>a.done);
+
+    // Progress bar
+    const pct=activities.length>0?Math.round(done.length/activities.length*100):0;
+    C.appendChild(h("div",{class:"card"},
+      h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}},
+        h("div",{style:{color:"#333",fontSize:"10px",letterSpacing:"0.2em"}},"🎲 UNTERNEHMUNGEN 2025"),
+        h("div",{style:{fontFamily:"Bebas Neue",fontSize:"20px",color:"#f472b6"}},`${done.length} / ${activities.length}`)
+      ),
+      h("div",{style:{height:"6px",background:"#111",borderRadius:"3px",overflow:"hidden",marginBottom:"6px"}},
+        h("div",{style:{height:"100%",width:`${pct}%`,background:"linear-gradient(90deg,#38bdf8,#f472b6)",borderRadius:"3px",transition:"width 0.6s ease"}})
+      ),
+      h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+        h("div",{style:{color:"#333",fontSize:"10px"}},`${pct}% geschafft 🎉`),
+        h("button",{class:"btn",style:{background:"#0a1a0a",border:"1px solid #4ade8033",borderRadius:"6px",color:"#4ade8088",padding:"4px 10px",fontSize:"10px"},
+          onclick:async()=>{
+            const btn=event.target;btn.textContent="⏳ Sync...";btn.style.color="#f59e0b";
+            try{
+              for(const a of activities)await sbActivities.save(a);
+              btn.textContent="✅ Gesynct!";btn.style.color="#4ade80";
+            }catch(e){btn.textContent="❌ Fehler";btn.style.color="#ff6666";}
+            setTimeout(()=>render(),1500);
+          }},"☁️ Sync")
+      )
+    ));
+
+    // Random picker button
+    const pickerCard=h("div",{style:{background:"linear-gradient(135deg,#0d0814,#140d1a)",border:"1px solid #a855f733",borderRadius:"16px",padding:"22px",marginBottom:"14px",textAlign:"center"}});
+    if(pickedActivity&&!pickedActivity.done){
+      // Show picked activity
+      const pa=h("div",{class:"picked-card"});
+      pa.appendChild(h("div",{style:{color:"#a855f755",fontSize:"10px",letterSpacing:"0.2em",marginBottom:"8px"}},"🎲 HEUTE MACHEN WIR..."));
+      pa.appendChild(h("div",{style:{color:"#fff",fontFamily:"Bebas Neue",fontSize:"32px",lineHeight:"1.1",marginBottom:"16px"}},pickedActivity.name));
+      pa.appendChild(h("div",{style:{display:"flex",gap:"10px",justifyContent:"center"}},
+        h("button",{class:"btn",style:{background:"#4ade8022",border:"1px solid #4ade8044",borderRadius:"10px",color:"#4ade80",padding:"11px 20px",fontSize:"12px",fontWeight:"700"},
+          onclick:async()=>{
+            pickedActivity.done=true;pickedActivity.doneAt=new Date().toLocaleDateString("de-DE");
+            await sbActivities.save(pickedActivity);saveActivitiesLocal();
+            spawnConfetti();pickedActivity=null;render();
+          }},"✅ GEMACHT!"),
+        h("button",{class:"btn",style:{background:"#1a1a2e",border:"1px solid #2a2a4a",borderRadius:"10px",color:"#666",padding:"11px 20px",fontSize:"12px"},
+          onclick:()=>{pickedActivity=null;render();}},"↩ Andere wählen")
+      ));
+      pickerCard.appendChild(pa);
+    } else if(todo.length>0){
+      pickerCard.appendChild(h("div",{style:{fontSize:"48px",marginBottom:"12px"}},"🎲"));
+      pickerCard.appendChild(h("div",{style:{color:"#888",fontSize:"13px",marginBottom:"18px"}},`${todo.length} Unternehmungen warten noch...`));
+      pickerCard.appendChild(h("button",{class:"btn",style:{background:"linear-gradient(135deg,#a855f7,#7c3aed)",borderRadius:"12px",color:"#fff",padding:"14px 32px",fontSize:"14px",fontWeight:"700",letterSpacing:"0.06em"},
+        onclick:()=>{
+          const r=todo[Math.floor(Math.random()*todo.length)];
+          pickedActivity=r;render();
+        }},"🎲 ZUFÄLLIG AUSWÄHLEN"));
+    } else {
+      pickerCard.appendChild(h("div",{style:{fontSize:"48px",marginBottom:"10px"}},"🏆"));
+      pickerCard.appendChild(h("div",{style:{color:"#4ade80",fontFamily:"Bebas Neue",fontSize:"24px"}},"ALLE GESCHAFFT!"));
+      pickerCard.appendChild(h("div",{style:{color:"#4ade8066",fontSize:"12px",marginTop:"6px"}},"Was für ein Jahr! 🎉"));
+    }
+    C.appendChild(pickerCard);
+
+    // Add new activity
+    const addRow=h("div",{style:{display:"flex",gap:"8px",marginBottom:"16px"}});
+    const ai=h("input",{type:"text",placeholder:"Neue Unternehmung hinzufügen...",style:{flex:"1",background:"#0d0d1a",border:"1px solid #1a1a2e",borderRadius:"8px",color:"#fff",padding:"9px 12px",fontSize:"13px"}});
+    addRow.appendChild(ai);
+    addRow.appendChild(h("button",{class:"btn",style:{background:"linear-gradient(135deg,#f472b6,#a855f7)",borderRadius:"8px",color:"#fff",padding:"9px 16px",fontSize:"12px",fontWeight:"700"},
+      onclick:async()=>{
+        const v=ai.value.trim();if(!v)return;
+        const na={id:uid(),name:v,done:false,doneAt:null};
+        activities.push(na);await sbActivities.save(na);saveActivitiesLocal();
+        ai.value="";render();
+      }},"+"));
+    C.appendChild(addRow);
+
+    // Todo list
+    if(todo.length){
+      C.appendChild(h("div",{style:{color:"#333",fontSize:"10px",letterSpacing:"0.15em",marginBottom:"8px"}},`📋 NOCH OFFEN (${todo.length})`));
+      todo.forEach(a=>{
+        const isPicked=pickedActivity?.id===a.id;
+        const row=h("div",{class:"activity-item",style:{border:`1px solid ${isPicked?"#a855f766":"#1a1a2e"}`,background:isPicked?"#1a0d2a":"#0d0d1a"}});
+        row.appendChild(h("div",{style:{fontSize:"16px"}},"🎯"));
+        row.appendChild(h("div",{style:{flex:"1",fontSize:"13px",color:isPicked?"#d8b4fe":"#ccc"}},a.name));
+        if(isPicked)row.appendChild(h("div",{style:{color:"#a855f7",fontSize:"10px",letterSpacing:"0.1em"}},"← AUSGEWÄHLT"));
+        row.appendChild(h("button",{class:"btn",style:{background:"#150505",borderRadius:"6px",color:"#ff6666",padding:"4px 8px",fontSize:"10px"},
+          onclick:async(e)=>{e.stopPropagation();await sbActivities.del(a.id);activities=activities.filter(x=>x.id!==a.id);saveActivitiesLocal();if(pickedActivity?.id===a.id)pickedActivity=null;render();}},"🗑️"));
+        C.appendChild(row);
+      });
+    }
+
+    // Done list
+    if(done.length){
+      C.appendChild(h("div",{style:{color:"#333",fontSize:"10px",letterSpacing:"0.15em",margin:"16px 0 8px"}},"✅ ERLEDIGT"));
+      done.forEach(a=>{
+        const row=h("div",{class:"activity-item done-item"});
+        row.appendChild(h("div",{style:{fontSize:"16px"}},"✅"));
+        const nameWrap=h("div",{style:{flex:"1",position:"relative"}});
+        nameWrap.appendChild(h("div",{style:{fontSize:"13px",color:"#4ade8088",textDecoration:"line-through"}},a.name));
+        if(a.doneAt)nameWrap.appendChild(h("div",{style:{fontSize:"10px",color:"#2a4a2a",marginTop:"2px"}},a.doneAt));
+        row.appendChild(nameWrap);
+        row.appendChild(h("button",{class:"btn",style:{background:"#111",borderRadius:"6px",color:"#555",padding:"4px 8px",fontSize:"10px"},
+          onclick:async()=>{a.done=false;a.doneAt=null;await sbActivities.save(a);saveActivitiesLocal();render();}},"↩"));
+        C.appendChild(row);
+      });
+    }
+  }
+
+
   if(tab==="history"){
     if(!deps.length)C.appendChild(h("div",{style:{textAlign:"center",padding:"50px",color:"#222"}},h("div",{style:{fontFamily:"Bebas Neue",fontSize:"20px"}},"NOCH KEINE EINZAHLUNGEN")));
     else{const list=h("div",{style:{display:"flex",flexDirection:"column",gap:"8px"}});
@@ -863,7 +1041,7 @@ function render(){
         h("div",{style:{display:"flex",gap:"10px"}},
           h("button",{class:"btn",style:{flex:"1",background:"#1a1a2e",borderRadius:"10px",color:"#666",padding:"12px"},onclick:()=>{goalDeleteId=null;render()}},"NEIN"),
           h("button",{class:"btn",style:{flex:"1",background:"#ff4444",borderRadius:"10px",color:"#fff",padding:"12px",fontWeight:"700"},onclick:async()=>{
-            await sbGoals.del(goalDeleteId);goals=goals.filter(g=>g.id!==goalDeleteId);goalDeleteId=null;render();
+            await sbGoals.del(goalDeleteId);goals=goals.filter(g=>g.id!==goalDeleteId);saveGoalsLocal();goalDeleteId=null;render();
           }},"LÖSCHEN"))
       )));
   }
@@ -881,7 +1059,7 @@ function render(){
   }
 }
 
-Promise.all([sb.all(),loadGoals()]).then(([d])=>{deps=d||[];loading=false;render();});
+Promise.all([sb.all(),loadGoals(),loadActivities()]).then(([d])=>{deps=d||[];loading=false;render();}).catch(e=>{console.error(e);document.getElementById("app").innerHTML=`<div style="color:#ff6666;padding:24px;font-family:monospace;font-size:12px;word-break:break-all">FEHLER: ${e.message}<br><br>${e.stack||""}</div>`;});
 </script>
 </body>
 </html>
