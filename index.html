@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tim & Lenas Sparplan 💙🩷</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Bebas+Neue&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#07070f;font-family:'DM Mono','Fira Code',monospace;color:#fff;min-height:100vh;overflow-x:hidden}
+    
+    @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+    @keyframes countUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+    @keyframes grow{from{width:0%}to{width:var(--w)}}
+    @keyframes floatUp{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-40px);opacity:0}}
+    @keyframes glow{0%,100%{box-shadow:0 0 20px #38bdf822}50%{box-shadow:0 0 40px #38bdf844}}
+    
+    input[type=range]{-webkit-appearance:none;width:100%;cursor:pointer;height:4px;background:linear-gradient(90deg,#38bdf8,#f472b6);border-radius:2px;outline:none}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid #38bdf8;cursor:pointer;box-shadow:0 0 8px #38bdf866}
+    
+    select option{background:#0d0d1a}
+    input,select,textarea{outline:none}
+    
+    .btn{cursor:pointer;font-family:'DM Mono','Fira Code',monospace;border:none;transition:all 0.2s}
+    .btn:active{transform:scale(0.97)}
+    
+    .card{background:#0d0d1a;border:1px solid #1a1a2e;border-radius:16px;padding:20px;margin-bottom:14px;animation:slideUp 0.3s ease both}
+    
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-thumb{background:#2a2a4a;border-radius:2px}
+
+    /* Grain overlay */
+    body::before{content:"";position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:0.4}
+
+    /* Interest particles */
+    .particle{position:absolute;pointer-events:none;font-size:11px;color:#4ade80;font-family:'DM Mono';animation:floatUp 1.5s ease forwards;font-weight:500}
+
+    /* Versus battle bar */
+    .versus-bar{position:relative;height:20px;border-radius:10px;overflow:hidden;background:#111}
+    .versus-tim{position:absolute;left:0;top:0;height:100%;background:linear-gradient(90deg,#1e7ab8,#38bdf8);border-radius:10px 0 0 10px;transition:width 1s cubic-bezier(.4,0,.2,1)}
+    .versus-lena{position:absolute;right:0;top:0;height:100%;background:linear-gradient(90deg,#f472b6,#e879f9);border-radius:0 10px 10px 0;transition:width 1s cubic-bezier(.4,0,.2,1)}
+    .versus-divider{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#07070f;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:9px;z-index:2;border:1px solid #2a2a4a}
+
+    /* Interest meter */
+    .interest-ring{position:relative;display:inline-flex;align-items:center;justify-content:center}
+    .interest-ring svg{transform:rotate(-90deg)}
+
+    /* Tab active glow */
+    .tab-active{position:relative}
+    .tab-active::after{content:"";position:absolute;bottom:-2px;left:10%;right:10%;height:2px;border-radius:1px;background:linear-gradient(90deg,#38bdf8,#f472b6)}
+
+    /* Stat card hover */
+    .stat-card{transition:border-color 0.2s,transform 0.2s}
+    .stat-card:hover{transform:translateY(-2px)}
+    
+    /* Leader crown animation */
+    @keyframes crownBounce{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-4px) rotate(5deg)}}
+    .crown{display:inline-block;animation:crownBounce 2s ease-in-out infinite}
+
+    /* Map & Goals */
+    @keyframes unlockPop{0%{transform:scale(0.5);opacity:0}70%{transform:scale(1.3)}100%{transform:scale(1);opacity:1}}
+    @keyframes pinFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+    @keyframes confetti{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(-70px) rotate(360deg);opacity:0}}
+    .map-wrap{position:relative;border-radius:12px;overflow:hidden;border:1px solid #1a1a2e}
+    #travel-map{height:340px;width:100%;border-radius:12px;z-index:1}
+    .leaflet-container{background:#080c18!important}
+    .leaflet-tile{filter:brightness(0.5) saturate(0.4) hue-rotate(200deg)!important}
+    .leaflet-control-zoom a{background:#0d0d1a!important;color:#555!important;border-color:#1a1a2e!important}
+    .leaflet-control-zoom a:hover{background:#1a1a2e!important;color:#fff!important}
+    .leaflet-control-attribution{background:#07070fcc!important;color:#333!important;font-size:9px!important}
+    .leaflet-control-attribution a{color:#444!important}
+    .goal-popup .leaflet-popup-content-wrapper{background:#0d0d1a;border:1px solid #2a2a4a;border-radius:12px;color:#fff;font-family:'DM Mono',monospace;box-shadow:0 8px 32px #00000088}
+    .goal-popup .leaflet-popup-tip{background:#0d0d1a}
+    .goal-popup .leaflet-popup-content{margin:12px 16px;font-size:12px;line-height:1.6}
+    .pin-icon{display:flex;align-items:center;justify-content:center;font-size:18px;filter:drop-shadow(0 2px 6px #00000088)}
+    .map-pin-el{cursor:pointer;transition:all 0.2s}
+    .map-pin-el:hover{filter:brightness(1.4)}
+    .goal-card{background:#0d0d1a;border:1px solid #1a1a2e;border-radius:14px;padding:16px;margin-bottom:10px;transition:border-color 0.2s,transform 0.2s}
+    .goal-card.unlocked{border-color:#4ade8044;background:linear-gradient(135deg,#051005,#0a0a12)}
+    .goal-card.locked-card{opacity:0.6}
+    .task-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #111;cursor:pointer}
+    .task-row:last-child{border-bottom:none}
+    .task-row:hover .task-box{border-color:#4ade8066}
+    .task-box{width:18px;height:18px;border-radius:5px;border:1px solid #2a2a4a;background:#0a0a12;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;font-size:11px}
+    .task-box.done{background:#4ade8022;border-color:#4ade8066;color:#4ade80}
+    .confetti-piece{position:absolute;pointer-events:none;animation:confetti 1s ease forwards}
+  </style>
+</head>
+<body>
+<div id="app" style="max-width:700px;margin:0 auto;padding:24px 16px 60px"></div>
+<script>
+const SURL="https://jykyucfvwzjpzdlhadre.supabase.co";
+const SKEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5a3l1Y2Z2d3pqcHpkbGhhZHJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNzEwODMsImV4cCI6MjA4ODc0NzA4M30.XuV-UwXvqsFgdyMYT_YxOnd5ZGH1m15an14xCcZN5RI";
+const GOAL=3000,MR=0.036/12;
+const MO=["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
+const COL={Tim:"#38bdf8",Lena:"#f472b6"};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2);
+const fmt=n=>Number(n).toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtShort=n=>Number(n).toLocaleString("de-DE",{minimumFractionDigits:0,maximumFractionDigits:0});
+
+const h=(tag,attrs,...kids)=>{
+  const e=document.createElement(tag);
+  for(const[k,v]of Object.entries(attrs||{})){
+    if(k==="style"&&typeof v==="object")Object.assign(e.style,v);
+    else if(k.startsWith("on"))e.addEventListener(k.slice(2).toLowerCase(),v);
+    else e.setAttribute(k,v);
+  }
+  for(const c of kids){if(c==null||c===false)continue;e.appendChild(typeof c==="string"||typeof c==="number"?document.createTextNode(String(c)):c);}
+  return e;
+};
+
+const sb={
+  async all(){const r=await fetch(`${SURL}/rest/v1/deposits?select=*&order=year.asc,month.asc`,{headers:{apikey:SKEY,Authorization:`Bearer ${SKEY}`}});return r.ok?r.json():[];},
+  async add(d){const r=await fetch(`${SURL}/rest/v1/deposits`,{method:"POST",headers:{apikey:SKEY,Authorization:`Bearer ${SKEY}`,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify(d)});return r.ok;},
+  async del(id){await fetch(`${SURL}/rest/v1/deposits?id=eq.${id}`,{method:"DELETE",headers:{apikey:SKEY,Authorization:`Bearer ${SKEY}`}});}
+};
+
+function calcVal(deps,asOf=new Date()){
+  return deps.reduce((s,d)=>{
+    const dd=new Date(d.year,d.month-1,15);
+    const m=Math.max(0,(asOf.getFullYear()-dd.getFullYear())*12+(asOf.getMonth()-dd.getMonth()));
+    return s+d.amount*Math.pow(1+MR,m);
+  },0);
+}
+
+function svgLine(data,keys,colors,W=640,H=200,showDots=false){
+  const pl=55,pr=10,pt=10,pb=30,cw=W-pl-pr,ch=H-pt-pb;
+  const allV=data.flatMap(d=>keys.map(k=>d[k]||0));
+  const maxV=Math.max(...allV)*1.05||100;
+  const xs=i=>(i/(data.length-1||1))*cw;
+  const ys=v=>ch-((v/maxV))*ch;
+  const s=document.createElementNS("http://www.w3.org/2000/svg","svg");
+  s.setAttribute("width","100%");s.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  
+  // Grid lines
+  for(let i=0;i<=4;i++){
+    const y=pt+(ch/4)*i,v=maxV-(maxV/4)*i;
+    const l=document.createElementNS("http://www.w3.org/2000/svg","line");
+    l.setAttribute("x1",pl);l.setAttribute("x2",pl+cw);l.setAttribute("y1",y);l.setAttribute("y2",y);
+    l.setAttribute("stroke","#1a1a2e");l.setAttribute("stroke-dasharray","3,4");s.appendChild(l);
+    const t=document.createElementNS("http://www.w3.org/2000/svg","text");
+    t.setAttribute("x",pl-4);t.setAttribute("y",y+4);t.setAttribute("text-anchor","end");
+    t.setAttribute("fill","#333");t.setAttribute("font-size","9");t.setAttribute("font-family","monospace");
+    t.textContent=`€${fmtShort(v)}`;s.appendChild(t);
+  }
+  
+  keys.forEach((k,ki)=>{
+    const pts=data.map((d,i)=>({x:pl+xs(i),y:pt+ys(d[k]||0)}));
+    
+    // Gradient fill
+    const gradId=`grad_${ki}_${Math.random().toString(36).slice(2)}`;
+    const defs=document.createElementNS("http://www.w3.org/2000/svg","defs");
+    const grad=document.createElementNS("http://www.w3.org/2000/svg","linearGradient");
+    grad.setAttribute("id",gradId);grad.setAttribute("x1","0");grad.setAttribute("y1","0");grad.setAttribute("x2","0");grad.setAttribute("y2","1");
+    const s1=document.createElementNS("http://www.w3.org/2000/svg","stop");
+    s1.setAttribute("offset","0%");s1.setAttribute("stop-color",colors[ki]);s1.setAttribute("stop-opacity","0.3");
+    const s2=document.createElementNS("http://www.w3.org/2000/svg","stop");
+    s2.setAttribute("offset","100%");s2.setAttribute("stop-color",colors[ki]);s2.setAttribute("stop-opacity","0");
+    grad.appendChild(s1);grad.appendChild(s2);defs.appendChild(grad);s.appendChild(defs);
+    
+    const a=document.createElementNS("http://www.w3.org/2000/svg","path");
+    let dp=`M ${pts[0].x} ${pt+ch}`;pts.forEach(p=>dp+=` L ${p.x} ${p.y}`);dp+=` L ${pts[pts.length-1].x} ${pt+ch} Z`;
+    a.setAttribute("d",dp);a.setAttribute("fill",`url(#${gradId})`);s.appendChild(a);
+    
+    // Smooth line
+    const l2=document.createElementNS("http://www.w3.org/2000/svg","path");
+    let lp=`M ${pts[0].x} ${pts[0].y}`;
+    for(let i=1;i<pts.length;i++){
+      const mx=(pts[i-1].x+pts[i].x)/2;
+      lp+=` C ${mx} ${pts[i-1].y}, ${mx} ${pts[i].y}, ${pts[i].x} ${pts[i].y}`;
+    }
+    l2.setAttribute("d",lp);l2.setAttribute("fill","none");l2.setAttribute("stroke",colors[ki]);l2.setAttribute("stroke-width","2.5");l2.setAttribute("stroke-linecap","round");s.appendChild(l2);
+    
+    // End dot
+    if(pts.length>0){
+      const last=pts[pts.length-1];
+      const dot=document.createElementNS("http://www.w3.org/2000/svg","circle");
+      dot.setAttribute("cx",last.x);dot.setAttribute("cy",last.y);dot.setAttribute("r","4");
+      dot.setAttribute("fill",colors[ki]);dot.setAttribute("stroke","#07070f");dot.setAttribute("stroke-width","2");s.appendChild(dot);
+    }
+  });
+  
+  const step=Math.ceil(data.length/5);
+  data.forEach((d,i)=>{
+    if(i%step!==0&&i!==data.length-1)return;
+    const t=document.createElementNS("http://www.w3.org/2000/svg","text");
+    t.setAttribute("x",pl+xs(i));t.setAttribute("y",H-8);t.setAttribute("text-anchor","middle");
+    t.setAttribute("fill","#333");t.setAttribute("font-size","9");t.setAttribute("font-family","monospace");
+    t.textContent=d.label;s.appendChild(t);
+  });
+  return s;
+}
+
+function svgBar(data,keys,colors,W=640,H=130){
+  const pl=45,pr=10,pt=10,pb=30,cw=W-pl-pr,ch=H-pt-pb;
+  const allV=data.flatMap(d=>keys.map(k=>d[k]||0));
+  const maxV=Math.max(...allV)*1.1||100;
+  const bw=(cw/data.length)/(keys.length+1.5);
+  const s=document.createElementNS("http://www.w3.org/2000/svg","svg");
+  s.setAttribute("width","100%");s.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  const bl=document.createElementNS("http://www.w3.org/2000/svg","line");
+  bl.setAttribute("x1",pl);bl.setAttribute("x2",pl+cw);bl.setAttribute("y1",pt+ch);bl.setAttribute("y2",pt+ch);
+  bl.setAttribute("stroke","#1a1a2e");s.appendChild(bl);
+  data.forEach((d,i)=>{
+    const gx=pl+(cw/data.length)*i+bw*0.5;
+    keys.forEach((k,ki)=>{
+      const v=d[k]||0,bh=(v/maxV)*ch;
+      const gradId=`bg_${ki}_${i}`;
+      const defs=document.createElementNS("http://www.w3.org/2000/svg","defs");
+      const grad=document.createElementNS("http://www.w3.org/2000/svg","linearGradient");
+      grad.setAttribute("id",gradId);grad.setAttribute("x1","0");grad.setAttribute("y1","0");grad.setAttribute("x2","0");grad.setAttribute("y2","1");
+      const s1=document.createElementNS("http://www.w3.org/2000/svg","stop");s1.setAttribute("offset","0%");s1.setAttribute("stop-color",colors[ki]);s1.setAttribute("stop-opacity","0.9");
+      const s2=document.createElementNS("http://www.w3.org/2000/svg","stop");s2.setAttribute("offset","100%");s2.setAttribute("stop-color",colors[ki]);s2.setAttribute("stop-opacity","0.4");
+      grad.appendChild(s1);grad.appendChild(s2);defs.appendChild(grad);s.appendChild(defs);
+      const r=document.createElementNS("http://www.w3.org/2000/svg","rect");
+      r.setAttribute("x",gx+ki*(bw+2));r.setAttribute("y",pt+ch-bh);
+      r.setAttribute("width",bw);r.setAttribute("height",bh||0);
+      r.setAttribute("fill",`url(#${gradId})`);r.setAttribute("rx","3");s.appendChild(r);
+    });
+    const t=document.createElementNS("http://www.w3.org/2000/svg","text");
+    t.setAttribute("x",gx+(bw+1));t.setAttribute("y",H-8);t.setAttribute("text-anchor","middle");
+    t.setAttribute("fill","#333");t.setAttribute("font-size","9");t.setAttribute("font-family","monospace");
+    t.textContent=d.label;s.appendChild(t);
+  });
+  return s;
+}
+
+// State
+let deps=[],tab="overview",showForm=false,person="Tim",amount="",month=new Date().getMonth()+1,year=new Date().getFullYear(),note="",delId=null,extra=100,loading=true;
+
+// Goals state
+let goals=[];
+let goalDeleteId=null;
+let showGoalForm=false;
+let newGoalName="",newGoalEmoji="✈️",newGoalBudget=500,newGoalLat=48,newGoalLng=16,newGoalTasks=["Flüge buchen","Hotel buchen"];
+
+const DEFAULT_GOALS=[
+  {id:"goal_japan",name:"Japan",emoji:"🗾",budget:2000,lat:36,lng:138,tasks:["Flüge buchen","Hotel buchen","JR Pass bestellen"],unlocked:false,tasksDone:[]},
+  {id:"goal_newyork",name:"New York",emoji:"🗽",budget:1500,lat:40.7,lng:-74,tasks:["Flüge buchen","Airbnb reservieren","Broadway Tickets"],unlocked:false,tasksDone:[]},
+  {id:"goal_malediven",name:"Malediven",emoji:"🏝️",budget:3000,lat:4,lng:73,tasks:["Flüge buchen","Resort buchen","Schnorchelausrüstung"],unlocked:false,tasksDone:[]},
+  {id:"goal_barcelona",name:"Barcelona",emoji:"🌞",budget:800,lat:41.4,lng:2.2,tasks:["Flüge buchen","Hotel buchen","Sagrada Família Tickets"],unlocked:false,tasksDone:[]},
+  {id:"goal_island",name:"Island",emoji:"🌋",budget:1200,lat:64.9,lng:-18,tasks:["Flüge buchen","Mietwagen buchen","Nordlichter Tour"],unlocked:false,tasksDone:[]},
+];
+
+const sbGoals={
+  async all(){
+    try{const r=await fetch(`${SURL}/rest/v1/goals?select=*`,{headers:{apikey:SKEY,Authorization:`Bearer ${SKEY}`}});if(r.ok){const d=await r.json();return d;}return null;}catch(e){return null;}
+  },
+  async save(g){
+    await fetch(`${SURL}/rest/v1/goals?id=eq.${g.id}`,{method:"DELETE",headers:{apikey:SKEY,Authorization:`Bearer ${SKEY}`}});
+    await fetch(`${SURL}/rest/v1/goals`,{method:"POST",headers:{apikey:SKEY,Authorization:`Bearer ${SKEY}`,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify(g)});
+  },
+  async del(id){await fetch(`${SURL}/rest/v1/goals?id=eq.${id}`,{method:"DELETE",headers:{apikey:SKEY,Authorization:`Bearer ${SKEY}`}});}
+};
+
+async function loadGoals(){
+  const remote=await sbGoals.all();
+  if(remote&&remote.length>0){goals=remote.map(g=>({...g,tasks:JSON.parse(g.tasks||"[]"),tasksDone:JSON.parse(g.tasksDone||"[]")}));}
+  else{goals=[...DEFAULT_GOALS];for(const g of goals){const gs={...g,tasks:JSON.stringify(g.tasks),tasksDone:JSON.stringify(g.tasksDone)};await sbGoals.save(gs);}}
+}
+
+function isUnlocked(g,total){
+  const budgetOk=total>=g.budget;
+  const tasksOk=g.tasks.every(t=>g.tasksDone.includes(t));
+  return budgetOk&&tasksOk;
+}
+
+async function toggleTask(goalId,task,total){
+  const g=goals.find(x=>x.id===goalId);if(!g)return;
+  if(g.tasksDone.includes(task))g.tasksDone=g.tasksDone.filter(t=>t!==task);
+  else g.tasksDone=[...g.tasksDone,task];
+  g.unlocked=isUnlocked(g,total);
+  await sbGoals.save({...g,tasks:JSON.stringify(g.tasks),tasksDone:JSON.stringify(g.tasksDone)});
+  if(g.unlocked)spawnConfetti();
+  render();
+}
+
+function spawnParticle(container,value){
+  const p=document.createElement("div");
+  p.className="particle";
+  p.textContent=`+€${fmt(value)}`;
+  p.style.left=`${20+Math.random()*60}%`;
+  p.style.bottom="10px";
+  p.style.animationDelay=`${Math.random()*0.5}s`;
+  container.style.position="relative";
+  container.style.overflow="visible";
+  container.appendChild(p);
+  setTimeout(()=>p.remove(),2000);
+}
+
+function renderInterestRing(interest,totDep){
+  const size=120;
+  const r=46;
+  const circ=2*Math.PI*r;
+  const pct=totDep>0?Math.min(interest/totDep,1):0;
+  const dash=pct*circ;
+  
+  const wrap=h("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:"6px"}});
+  const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("width",size);svg.setAttribute("height",size);svg.setAttribute("viewBox",`0 0 ${size} ${size}`);
+  
+  // Background ring
+  const bg=document.createElementNS("http://www.w3.org/2000/svg","circle");
+  bg.setAttribute("cx",size/2);bg.setAttribute("cy",size/2);bg.setAttribute("r",r);
+  bg.setAttribute("fill","none");bg.setAttribute("stroke","#1a1a2e");bg.setAttribute("stroke-width","8");svg.appendChild(bg);
+  
+  // Glow ring
+  const glow=document.createElementNS("http://www.w3.org/2000/svg","circle");
+  glow.setAttribute("cx",size/2);glow.setAttribute("cy",size/2);glow.setAttribute("r",r);
+  glow.setAttribute("fill","none");glow.setAttribute("stroke","#4ade8033");glow.setAttribute("stroke-width","12");svg.appendChild(glow);
+  
+  // Progress ring
+  const prog=document.createElementNS("http://www.w3.org/2000/svg","circle");
+  prog.setAttribute("cx",size/2);prog.setAttribute("cy",size/2);prog.setAttribute("r",r);
+  prog.setAttribute("fill","none");prog.setAttribute("stroke","url(#greenGrad)");prog.setAttribute("stroke-width","8");
+  prog.setAttribute("stroke-linecap","round");
+  prog.setAttribute("stroke-dasharray",`${dash} ${circ}`);svg.appendChild(prog);
+  
+  // Gradient for ring
+  const defs=document.createElementNS("http://www.w3.org/2000/svg","defs");
+  const grad=document.createElementNS("http://www.w3.org/2000/svg","linearGradient");
+  grad.setAttribute("id","greenGrad");grad.setAttribute("x1","0");grad.setAttribute("y1","0");grad.setAttribute("x2","1");grad.setAttribute("y2","1");
+  const s1=document.createElementNS("http://www.w3.org/2000/svg","stop");s1.setAttribute("offset","0%");s1.setAttribute("stop-color","#4ade80");
+  const s2=document.createElementNS("http://www.w3.org/2000/svg","stop");s2.setAttribute("offset","100%");s2.setAttribute("stop-color","#86efac");
+  grad.appendChild(s1);grad.appendChild(s2);defs.appendChild(grad);svg.insertBefore(defs,svg.firstChild);
+  
+  // Center text
+  const ct=document.createElementNS("http://www.w3.org/2000/svg","text");
+  ct.setAttribute("x",size/2);ct.setAttribute("y",size/2-4);ct.setAttribute("text-anchor","middle");ct.setAttribute("fill","#4ade80");ct.setAttribute("font-size","16");ct.setAttribute("font-family","Bebas Neue");
+  ct.textContent=`+€${fmtShort(interest)}`;svg.appendChild(ct);
+  const ct2=document.createElementNS("http://www.w3.org/2000/svg","text");
+  ct2.setAttribute("x",size/2);ct2.setAttribute("y",size/2+14);ct2.setAttribute("text-anchor","middle");ct2.setAttribute("fill","#4ade8088");ct2.setAttribute("font-size","9");ct2.setAttribute("font-family","monospace");
+  ct2.textContent="Zinsen";svg.appendChild(ct2);
+  
+  wrap.appendChild(svg);
+  return wrap;
+}
+
+function spawnConfetti(){
+  const emojis=["🎉","✨","🌟","💫","🎊","🥳"];
+  for(let i=0;i<10;i++){
+    setTimeout(()=>{
+      const p=document.createElement("div");
+      p.className="confetti-piece";
+      p.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+      p.style.cssText=`position:fixed;left:${10+Math.random()*80}%;top:${20+Math.random()*40}%;font-size:${14+Math.random()*16}px;z-index:9998;pointer-events:none;animation:confetti ${0.8+Math.random()*0.8}s ease forwards`;
+      document.body.appendChild(p);
+      setTimeout(()=>p.remove(),1600);
+    },i*80);
+  }
+}
+
+let leafletMap=null;
+
+function initOrUpdateMap(goals, total){
+  // If map already exists, just update markers
+  if(leafletMap){
+    leafletMap.eachLayer(l=>{ if(l instanceof L.Marker) leafletMap.removeLayer(l); });
+    addMapMarkers(leafletMap, goals, total);
+    return;
+  }
+
+  leafletMap = L.map('travel-map', {
+    center: [20, 15],
+    zoom: 2,
+    minZoom: 1,
+    maxZoom: 10,
+    zoomControl: true,
+    attributionControl: true,
+  });
+
+  // Dark tile layer
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(leafletMap);
+
+  addMapMarkers(leafletMap, goals, total);
+}
+
+function addMapMarkers(map, goals, total){
+  goals.forEach(g => {
+    const unlocked = isUnlocked(g, total);
+    const tasksDone = g.tasksDone.length;
+    const tasksTotal = g.tasks.length;
+    const budgetPct = Math.min(total / g.budget * 100, 100);
+
+    const iconHtml = `<div style="
+      width:36px;height:36px;border-radius:50%;
+      background:${unlocked ? '#0a1a0a' : '#0d0d1a'};
+      border:2px solid ${unlocked ? '#4ade80' : '#2a2a4a'};
+      display:flex;align-items:center;justify-content:center;
+      font-size:18px;cursor:pointer;
+      box-shadow:${unlocked ? '0 0 12px #4ade8066' : '0 2px 8px #00000099'};
+      transition:all 0.2s;
+      filter:${unlocked ? 'none' : 'grayscale(0.8) brightness(0.6)'}
+    ">${unlocked ? g.emoji : '🔒'}</div>`;
+
+    const icon = L.divIcon({
+      html: iconHtml,
+      className: '',
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      popupAnchor: [0, -22],
+    });
+
+    const marker = L.marker([g.lat, g.lng], {icon}).addTo(map);
+
+    const statusColor = unlocked ? '#4ade80' : total >= g.budget ? '#f59e0b' : '#555';
+    const statusText = unlocked ? '✅ FREIGESCHALTET' : total >= g.budget ? '⏳ Fast geschafft!' : '🔒 Gesperrt';
+
+    marker.bindPopup(`
+      <div style="min-width:160px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:22px">${g.emoji}</span>
+          <div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;line-height:1">${g.name}</div>
+            <div style="color:${statusColor};font-size:10px;letter-spacing:0.1em">${statusText}</div>
+          </div>
+        </div>
+        <div style="color:#555;font-size:10px;margin-bottom:4px">💰 SPARZIEL</div>
+        <div style="height:4px;background:#111;border-radius:2px;margin-bottom:4px;overflow:hidden">
+          <div style="height:100%;width:${budgetPct}%;background:${total>=g.budget?'#4ade80':'#38bdf8'};border-radius:2px"></div>
+        </div>
+        <div style="color:#888;font-size:11px;margin-bottom:8px">€${total.toFixed(0)} / €${g.budget.toLocaleString('de-DE')}</div>
+        <div style="color:#555;font-size:10px;margin-bottom:4px">📋 AUFGABEN ${tasksDone}/${tasksTotal}</div>
+        ${g.tasks.map(t=>`<div style="color:${g.tasksDone.includes(t)?'#4ade80':'#444'};font-size:11px">${g.tasksDone.includes(t)?'✓':'○'} ${t}</div>`).join('')}
+      </div>
+    `, {className: 'goal-popup'});
+  });
+}
+
+
+function render(){
+  // Always destroy leaflet map before re-render — it gets recreated if needed
+  if(leafletMap){ leafletMap.remove(); leafletMap=null; }
+  const app=document.getElementById("app");
+  app.innerHTML="";
+  if(loading){app.appendChild(h("div",{style:{minHeight:"80vh",display:"flex",alignItems:"center",justifyContent:"center"}},h("div",{style:{color:"#555",fontFamily:"Bebas Neue",fontSize:"24px",letterSpacing:"0.2em"}},"LADE DATEN...")));return;}
+
+  const tD=deps.filter(d=>d.person==="Tim"),lD=deps.filter(d=>d.person==="Lena");
+  const tV=calcVal(tD),lV=calcVal(lD),total=tV+lV;
+  const tDep=tD.reduce((a,d)=>a+d.amount,0),lDep=lD.reduce((a,d)=>a+d.amount,0),totDep=tDep+lDep;
+  const interest=total-totDep,prog=Math.min(total/GOAL*100,100);
+  const timLeads=tV>=lV;
+
+  // Header
+  app.appendChild(h("div",{style:{marginBottom:"28px",display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:"12px"}},
+    h("div",{},
+      h("div",{style:{fontSize:"10px",letterSpacing:"0.3em",color:"#333",marginBottom:"4px"}},"XTRACKERS II EUR OVERNIGHT"),
+      h("h1",{style:{fontFamily:"Bebas Neue,sans-serif",fontSize:"44px",letterSpacing:"0.04em",lineHeight:"1"}},
+        h("span",{style:{color:COL.Tim}},"TIM"),
+        h("span",{style:{color:"#222",margin:"0 8px"}},"&"),
+        h("span",{style:{color:COL.Lena}},"LENA")),
+      h("div",{style:{fontSize:"11px",color:"#444",marginTop:"5px"}},
+        "Ziel: ",h("span",{style:{color:"#fff"}},"€3.000")," · ",h("span",{style:{color:"#4ade80"}},"3.6% p.a."))
+    ),
+    h("button",{class:"btn",style:{background:showForm?"#0d0d1a":"linear-gradient(135deg,#f472b6,#a855f7)",border:showForm?"1px solid #2a2a4a":"none",borderRadius:"12px",color:showForm?"#666":"#fff",padding:"12px 22px",fontSize:"12px",fontWeight:"700",letterSpacing:"0.06em"},
+      onclick:()=>{showForm=!showForm;render()}},showForm?"✕ ABBRECHEN":"+ EINZAHLUNG")
+  ));
+
+  // Form
+  if(showForm){
+    const amtInp=h("input",{type:"number",value:amount,placeholder:"50",style:{width:"100%",background:"#111122",border:"1px solid #2a2a4a",borderRadius:"8px",color:"#fff",padding:"9px 12px",fontSize:"14px"},oninput:e=>{amount=e.target.value}});
+    const noteInp=h("input",{type:"text",value:note,placeholder:"z.B. Monatsrate März",style:{width:"100%",background:"#111122",border:"1px solid #2a2a4a",borderRadius:"8px",color:"#ccc",padding:"9px 12px",fontSize:"13px"},oninput:e=>{note=e.target.value}});
+    const mSel=h("select",{style:{width:"100%",background:"#111122",border:"1px solid #2a2a4a",borderRadius:"8px",color:"#fff",padding:"9px 12px",fontSize:"13px"},onchange:e=>{month=parseInt(e.target.value)}},
+      ...MO.map((m,i)=>{const o=h("option",{value:i+1},m);if(i+1===month)o.selected=true;return o;}));
+    const ySel=h("select",{style:{width:"100%",background:"#111122",border:"1px solid #2a2a4a",borderRadius:"8px",color:"#fff",padding:"9px 12px",fontSize:"13px"},onchange:e=>{year=parseInt(e.target.value)}},
+      ...[2024,2025,2026,2027,2028].map(y=>{const o=h("option",{value:y},y);if(y===year)o.selected=true;return o;}));
+    app.appendChild(h("div",{style:{background:"#0d0d1a",border:"1px solid #2a2a4a",borderRadius:"16px",padding:"22px",marginBottom:"24px",animation:"slideUp 0.2s ease"}},
+      h("div",{style:{color:"#444",fontSize:"10px",letterSpacing:"0.2em",marginBottom:"16px"}},"💰 NEUE EINZAHLUNG"),
+      h("div",{style:{marginBottom:"14px"}},
+        h("div",{style:{color:"#444",fontSize:"10px",letterSpacing:"0.15em",marginBottom:"7px"}},"WER ZAHLT EIN?"),
+        h("div",{style:{display:"flex",gap:"10px"}},
+          ...["Tim","Lena"].map(p=>h("button",{class:"btn",style:{flex:"1",padding:"11px",borderRadius:"10px",fontFamily:"Bebas Neue,sans-serif",fontSize:"20px",border:`2px solid ${person===p?COL[p]:"#1e1e3a"}`,background:person===p?COL[p]+"22":"#111122",color:person===p?COL[p]:"#333",transition:"all 0.2s"},onclick:()=>{person=p;render()}},p))
+        )
+      ),
+      h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"10px",marginBottom:"12px"}},
+        h("div",{},h("div",{style:{color:"#444",fontSize:"10px",letterSpacing:"0.15em",marginBottom:"5px"}},"BETRAG (€)"),amtInp),
+        h("div",{},h("div",{style:{color:"#444",fontSize:"10px",letterSpacing:"0.15em",marginBottom:"5px"}},"MONAT"),mSel),
+        h("div",{},h("div",{style:{color:"#444",fontSize:"10px",letterSpacing:"0.15em",marginBottom:"5px"}},"JAHR"),ySel)
+      ),
+      h("div",{style:{marginBottom:"14px"}},h("div",{style:{color:"#444",fontSize:"10px",letterSpacing:"0.15em",marginBottom:"5px"}},"NOTIZ (optional)"),noteInp),
+      h("button",{class:"btn",style:{width:"100%",background:`linear-gradient(135deg,${COL[person]}cc,${COL[person]}66)`,borderRadius:"10px",color:"#fff",padding:"13px",fontSize:"13px",fontWeight:"700",letterSpacing:"0.06em"},
+        onclick:async()=>{
+          if(!amount||isNaN(amount))return;
+          const dep={id:uid(),person,amount:parseFloat(amount),month,year,note:note||""};
+          const ok=await sb.add(dep);
+          if(ok){deps.push(dep);amount="";note="";showForm=false;}
+          render();
+          if(ok){const t=h("div",{style:{position:"fixed",top:"20px",right:"20px",background:"#0a1a0a",border:"1px solid #4ade8044",borderRadius:"10px",padding:"14px 20px",color:"#4ade80",fontSize:"12px",zIndex:"999",animation:"slideUp 0.3s ease"}},`✅ +€${parseFloat(dep.amount).toFixed(2)} gespeichert!`);document.body.appendChild(t);setTimeout(()=>t.remove(),2800);}
+        }},"💾 EINZAHLUNG SPEICHERN")
+    ));
+  }
+
+  // Progress
+  app.appendChild(h("div",{style:{background:"#0d0d1a",border:"1px solid #1a1a2e",borderRadius:"20px",padding:"28px",marginBottom:"16px"}},
+    h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:"14px",flexWrap:"wrap",gap:"8px"}},
+      h("div",{},
+        h("div",{style:{color:"#333",fontSize:"10px",letterSpacing:"0.2em",marginBottom:"4px"}},"AKTUELLER STAND"),
+        h("div",{style:{fontFamily:"Bebas Neue,sans-serif",fontSize:"52px",lineHeight:"1",letterSpacing:"-0.01em"}},`€${fmt(total)}`)
+      ),
+      h("div",{style:{textAlign:"right"}},
+        h("div",{style:{color:"#333",fontSize:"10px",marginBottom:"2px"}},"ZIEL"),
+        h("div",{style:{fontFamily:"Bebas Neue",fontSize:"30px",color:"#2a2a4a"}},"€3.000"),
+        h("div",{style:{fontFamily:"Bebas Neue",fontSize:"22px",color:prog>=100?"#4ade80":"#f472b6"}},`${prog.toFixed(1)}%`)
+      )
+    ),
+    // Segmented progress bar
+    h("div",{style:{position:"relative",height:"10px",background:"#111",borderRadius:"5px",overflow:"hidden",marginBottom:"12px"}},
+      h("div",{style:{position:"absolute",left:"0",top:"0",height:"100%",width:`${Math.min(tV/GOAL*100,100)}%`,background:`linear-gradient(90deg,${COL.Tim}66,${COL.Tim})`,borderRadius:"5px",transition:"width 0.8s cubic-bezier(.4,0,.2,1)"}}),
+      h("div",{style:{position:"absolute",left:`${Math.min(tV/GOAL*100,100)}%`,top:"0",height:"100%",width:`${Math.min(lV/GOAL*100,100)}%`,background:`linear-gradient(90deg,${COL.Lena}66,${COL.Lena})`,borderRadius:"0 5px 5px 0",transition:"width 0.8s cubic-bezier(.4,0,.2,1)"}}),
+      interest>0.5?h("div",{style:{position:"absolute",left:`${Math.min((tV+lV)/GOAL*100-1,99)}%`,top:"0",height:"100%",width:"2px",background:"#4ade8088"}}):null
+    ),
+    h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+      h("div",{style:{display:"flex",gap:"16px"}},
+        h("span",{style:{color:COL.Tim,fontSize:"12px"}},`● Tim €${fmt(tV)}`),
+        h("span",{style:{color:COL.Lena,fontSize:"12px"}},`● Lena €${fmt(lV)}`)
+      ),
+      h("span",{style:{color:"#333",fontSize:"10px"}},"Noch: "),
+      h("span",{style:{color:total>=GOAL?"#4ade80":"#fff",fontFamily:"Bebas Neue",fontSize:"16px"}},`€${fmt(Math.max(0,GOAL-total))}`)
+    )
+  ));
+
+  // Stats grid
+  const sg=h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"16px"}});
+  [{l:"TIM EINGEZAHLT",v:`€${fmt(tDep)}`,s:`Wert: €${fmt(tV)}`,c:COL.Tim,b:"#0a1620"},{l:"LENA EINGEZAHLT",v:`€${fmt(lDep)}`,s:`Wert: €${fmt(lV)}`,c:COL.Lena,b:"#160a14"},
+   {l:"GESAMT EINGEZAHLT",v:`€${fmt(totDep)}`,c:"#fff",b:"#0d0d1a"},{l:"NOCH FEHLEND",v:`€${fmt(Math.max(0,GOAL-total))}`,c:total>=GOAL?"#4ade80":"#f59e0b",b:total>=GOAL?"#0a1a0a":"#12100a"}
+  ].forEach(({l,v,s,c,b})=>sg.appendChild(h("div",{class:"stat-card",style:{background:b,border:`1px solid ${c}22`,borderRadius:"12px",padding:"14px 16px",cursor:"default"}},
+    h("div",{style:{color:"#333",fontSize:"10px",letterSpacing:"0.15em",marginBottom:"4px"}},l),
+    h("div",{style:{color:c,fontFamily:"Bebas Neue,sans-serif",fontSize:"22px"}},v),
+    s?h("div",{style:{color:"#333",fontSize:"10px",marginTop:"2px"}},s):null
+  )));
+  app.appendChild(sg);
+
+  // Tab bar
+  const tb=h("div",{style:{display:"flex",gap:"6px",marginBottom:"20px",flexWrap:"wrap"}});
+  [["overview","📊 Übersicht"],["forecast","🔮 Prognose"],["vs","💡 ETF vs Schublade"],["goals","🗺️ Ziele"],["history","📋 Verlauf"]].forEach(([t,l])=>{
+    const active=tab===t;
+    const btn=h("button",{class:`btn${active?" tab-active":""}`,style:{flex:"1",minWidth:"100px",padding:"9px 6px",borderRadius:"8px",fontSize:"11px",letterSpacing:"0.06em",border:`1px solid ${active?"#2a2a4a":"#1a1a2e"}`,background:active?"#111122":"#0a0a12",color:active?"#fff":"#333",fontWeight:active?"600":"400"},onclick:()=>{tab=t;render()}},l);
+    tb.appendChild(btn);
+  });
+  app.appendChild(tb);
+
+  const C=h("div",{});
+
+  if(tab==="overview"){
+    // Duell — improved battle section
+    const dc=h("div",{class:"card"});
+    
+    const duelHeader=h("div",{style:{display:"flex",alignItems:"center",gap:"10px",marginBottom:"20px"}});
+    duelHeader.appendChild(h("div",{style:{fontSize:"18px"}},"⚔️"));
+    duelHeader.appendChild(h("div",{style:{color:"#333",fontSize:"10px",letterSpacing:"0.2em",flex:"1"}},"TIM VS LENA — WER IST VORNE?"));
+    dc.appendChild(duelHeader);
+    
+    if(total>0){
+      const timPct=tV/total*100;
+      const lenaPct=lV/total*100;
+      const leader=tV>=lV?"Tim":"Lena";
+      const leaderColor=tV>=lV?COL.Tim:COL.Lena;
+      const gap=Math.abs(tV-lV);
+      
+      // Leader badge
+      dc.appendChild(h("div",{style:{textAlign:"center",marginBottom:"16px"}},
+        h("span",{class:"crown",style:{fontSize:"20px"}},"👑"),
+        h("div",{style:{fontFamily:"Bebas Neue",fontSize:"28px",color:leaderColor,lineHeight:"1"}},leader+" führt"),
+        h("div",{style:{color:"#333",fontSize:"11px",marginTop:"4px"}},`mit €${fmt(gap)} Vorsprung`)
+      ));
+      
+      // Score display
+      dc.appendChild(h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}},
+        h("div",{style:{textAlign:"center"}},
+          h("div",{style:{color:COL.Tim,fontFamily:"Bebas Neue",fontSize:"32px",lineHeight:"1"}},`€${fmt(tV)}`),
+          h("div",{style:{color:COL.Tim+"66",fontSize:"10px",marginTop:"2px"}},"TIM")
+        ),
+        h("div",{style:{color:"#1a1a2e",fontFamily:"Bebas Neue",fontSize:"22px"}},"VS"),
+        h("div",{style:{textAlign:"center"}},
+          h("div",{style:{color:COL.Lena,fontFamily:"Bebas Neue",fontSize:"32px",lineHeight:"1"}},`€${fmt(lV)}`),
+          h("div",{style:{color:COL.Lena+"66",fontSize:"10px",marginTop:"2px"}},"LENA")
+        )
+      ));
+      
+      // Battle bar
+      const bb=h("div",{class:"versus-bar",style:{marginBottom:"8px"}});
+      bb.appendChild(h("div",{class:"versus-tim",style:{width:`${timPct}%`}}));
+      bb.appendChild(h("div",{class:"versus-lena",style:{width:`${lenaPct}%`}}));
+      bb.appendChild(h("div",{class:"versus-divider"},"⚡"));
+      dc.appendChild(bb);
+      
+      dc.appendChild(h("div",{style:{display:"flex",justifyContent:"space-between",marginTop:"6px",marginBottom:"18px"}},
+        h("span",{style:{color:COL.Tim,fontSize:"10px"}},"Tim " + timPct.toFixed(0)+"%"),
+        h("span",{style:{color:COL.Lena,fontSize:"10px"}},"Lena " + lenaPct.toFixed(0)+"%")
+      ));
+    }
+    
+    // Monthly bar chart
+    const mm={};deps.forEach(d=>{const k=`${MO[d.month-1]} ${d.year}`;if(!mm[k])mm[k]={label:k,Tim:0,Lena:0,sort:d.year*100+d.month};mm[k][d.person]+=d.amount;});
+    const mly=Object.values(mm).sort((a,b)=>a.sort-b.sort);
+    if(mly.length){
+      dc.appendChild(h("div",{style:{color:"#333",fontSize:"10px",letterSpacing:"0.15em",marginBottom:"10px"}},"💰 EINZAHLUNGEN PRO MONAT"));
+      dc.appendChild(svgBar(mly,["Tim","Lena"],[COL.Tim,COL.Lena]));
+      dc.appendChild(h("div",{style:{display:"flex",gap:"16px",marginTop:"6px"}},
+        h("span",{style:{color:COL.Tim,fontSize:"11px"}},"■ Tim"),
+        h("span",{style:{color:COL.Lena,fontSize:"11px"}},"■ Lena")
+      ));
+    }
+    C.appendChild(dc);
+  }
+
+  if(tab==="forecast"){
+    const now=new Date();let tv=calcVal(tD),lv2=calcVal(lD);
+    const pts=[{label:"Heute",total:+(tv+lv2).toFixed(2)}];let y=now.getFullYear(),m=now.getMonth()+1;
+    for(let i=0;i<120;i++){tv=(tv+extra/2)*(1+MR);lv2=(lv2+extra/2)*(1+MR);m++;if(m>12){m=1;y++;}pts.push({label:`${MO[m-1]} ${String(y).slice(2)}`,total:+(tv+lv2).toFixed(2)});if(tv+lv2>=GOAL)break;}
+    const ll=pts[pts.length-1].label;
+    const fc=h("div",{class:"card"});
+    fc.appendChild(h("div",{style:{color:"#333",fontSize:"10px",letterSpacing:"0.2em",marginBottom:"14px"}},"🔮 WANN ERREICHEN WIR €3.000?"));
+    fc.appendChild(h("div",{style:{marginBottom:"16px"}},
+      h("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:"6px"}},
+        h("span",{style:{color:"#555",fontSize:"12px"}},"Monatliche Einzahlung"),
+        h("span",{style:{color:"#fff",fontFamily:"Bebas Neue",fontSize:"18px"}},`€${extra}`)
+      ),
+      h("input",{type:"range",min:"20",max:"500",step:"10",value:extra,oninput:e=>{extra=parseInt(e.target.value);render()}})
+    ));
+    fc.appendChild(h("div",{style:{background:"#080812",border:"1px solid #4ade8022",borderRadius:"12px",padding:"14px 18px",marginBottom:"16px",display:"flex",justifyContent:"space-between",alignItems:"center"}},
+      h("div",{},h("div",{style:{color:"#333",fontSize:"10px",marginBottom:"2px"}},"ZIEL ERREICHT IN"),h("div",{style:{color:"#4ade80",fontFamily:"Bebas Neue",fontSize:"28px"}},ll)),
+      h("div",{style:{textAlign:"right"}},h("div",{style:{color:"#333",fontSize:"10px",marginBottom:"2px"}},"IN CA."),h("div",{style:{color:"#fff",fontFamily:"Bebas Neue",fontSize:"28px"}},`${pts.length-1} Mo.`))
+    ));
+    fc.appendChild(svgLine(pts,["total"],["#4ade80"]));
+    C.appendChild(fc);
+  }
+
+  if(tab==="vs"){
+    const now=new Date(),cd=[];let wi=total,ni=totDep;
+    for(let i=1;i<=60;i++){wi=(wi+extra)*(1+MR);ni+=extra;const mo=((now.getMonth()+i)%12),y2=now.getFullYear()+Math.floor((now.getMonth()+i)/12);if(i%3===0||i===1)cd.push({label:`${MO[mo]} ${String(y2).slice(2)}`,etf:+wi.toFixed(2),schublade:+ni.toFixed(2)});}
+    const fw=cd[cd.length-1]?.etf??total,fn=cd[cd.length-1]?.schublade??totDep,diff=fw-fn;
+    C.appendChild(h("div",{class:"card"},h("div",{style:{color:"#333",fontSize:"10px",letterSpacing:"0.2em",marginBottom:"14px"}},"⚙️ MONATLICHE EINZAHLUNG"),
+      h("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:"6px"}},h("span",{style:{color:"#555",fontSize:"12px"}},"Gesamt pro Monat"),h("span",{style:{color:"#fff",fontFamily:"Bebas Neue",fontSize:"20px"}},`€${extra}`)),
+      h("input",{type:"range",min:"20",max:"500",step:"10",value:extra,oninput:e=>{extra=parseInt(e.target.value);render()}})
+    ));
+    C.appendChild(h("div",{style:{background:"linear-gradient(135deg,#050f05,#070d07)",border:"1px solid #4ade8033",borderRadius:"16px",padding:"24px",textAlign:"center",marginBottom:"14px"}},
+      h("div",{style:{color:"#4ade8055",fontSize:"10px",letterSpacing:"0.3em",marginBottom:"8px"}},"IN 5 JAHREN — EUER VORTEIL"),
+      h("div",{style:{color:"#4ade80",fontFamily:"Bebas Neue",fontSize:"56px",lineHeight:"1"}},`+€${fmt(diff)}`),
+      h("div",{style:{color:"#4ade8066",fontSize:"11px",marginTop:"8px"}},"mehr mit dem ETF als in der Schublade 🎉")
+    ));
+    const gg=h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"14px"}});
+    gg.appendChild(h("div",{style:{background:"linear-gradient(135deg,#050f05,#0a1a0a)",border:"1px solid #4ade8033",borderRadius:"12px",padding:"16px",textAlign:"center"}},h("div",{style:{fontSize:"24px",marginBottom:"6px"}},"📈"),h("div",{style:{color:"#4ade8066",fontSize:"10px",letterSpacing:"0.15em",marginBottom:"4px"}},"XTRACKERS ETF"),h("div",{style:{color:"#4ade80",fontFamily:"Bebas Neue",fontSize:"28px"}},`€${fmt(fw)}`),h("div",{style:{color:"#4ade8055",fontSize:"10px",marginTop:"4px"}},"mit 3.6% p.a.")));
+    gg.appendChild(h("div",{style:{background:"linear-gradient(135deg,#12100a,#0d0d1a)",border:"1px solid #f59e0b33",borderRadius:"12px",padding:"16px",textAlign:"center"}},h("div",{style:{fontSize:"24px",marginBottom:"6px"}},"🪣"),h("div",{style:{color:"#f59e0b66",fontSize:"10px",letterSpacing:"0.15em",marginBottom:"4px"}},"SCHUBLADE"),h("div",{style:{color:"#f59e0b",fontFamily:"Bebas Neue",fontSize:"28px"}},`€${fmt(fn)}`),h("div",{style:{color:"#f59e0b55",fontSize:"10px",marginTop:"4px"}},"0% Zinsen")));
+    C.appendChild(gg);
+    const vc=h("div",{class:"card"});vc.appendChild(h("div",{style:{color:"#333",fontSize:"10px",letterSpacing:"0.2em",marginBottom:"16px"}},"📊 ENTWICKLUNG ÜBER 5 JAHRE"));vc.appendChild(svgLine(cd,["etf","schublade"],["#4ade80","#f59e0b"]));
+    vc.appendChild(h("div",{style:{display:"flex",gap:"16px",marginTop:"10px"}},h("span",{style:{color:"#4ade80",fontSize:"11px"}},"● ETF"),h("span",{style:{color:"#f59e0b",fontSize:"11px"}},"● Schublade")));C.appendChild(vc);
+    C.appendChild(h("div",{style:{background:"#0a0a12",border:"1px solid #1a1a2e",borderRadius:"12px",padding:"16px",fontSize:"12px",color:"#444",lineHeight:"2"}},
+      "💡 ETF-Wert nach 5 Jahren: ",h("span",{style:{color:"#4ade80"}},`€${fmt(fw)}`),h("br"),
+      "Schublade nach 5 Jahren: ",h("span",{style:{color:"#f59e0b"}},`€${fmt(fn)}`),h("br"),
+      h("span",{style:{color:"#2a2a2a"}},"📌 Inflation nicht eingerechnet — Schublade verliert sogar an Wert!")));
+  }
+
+  if(tab==="goals"){
+    // Map header
+    const mapCard=h("div",{style:{marginBottom:"14px"}});
+    mapCard.appendChild(h("div",{style:{color:"#333",fontSize:"10px",letterSpacing:"0.2em",marginBottom:"12px"}},"🗺️ EURE REISEZIELE"));
+
+    // World map — nur anzeigen wenn Formular zu
+    if(!showGoalForm){
+      const mapWrap=h("div",{class:"map-wrap",style:{marginBottom:"16px"}});
+      mapWrap.appendChild(h("div",{id:"travel-map"}));
+      mapCard.appendChild(mapWrap);
+      setTimeout(()=>initOrUpdateMap(goals,total), 50);
+    }
+
+    // Unlocked counter
+    const unlockedCount=goals.filter(g=>isUnlocked(g,total)).length;
+    mapCard.appendChild(h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}},
+      h("div",{style:{color:"#4ade80",fontSize:"12px"}},`✅ ${unlockedCount} von ${goals.length} freigeschaltet`),
+      h("button",{class:"btn",style:{background:showGoalForm?"#0d0d1a":"linear-gradient(135deg,#f472b6,#a855f7)",border:showGoalForm?"1px solid #2a2a4a":"none",borderRadius:"8px",color:showGoalForm?"#666":"#fff",padding:"8px 16px",fontSize:"11px",fontWeight:"700"},
+        onclick:()=>{showGoalForm=!showGoalForm;if(showGoalForm){newGoalName="";newGoalEmoji="✈️";newGoalBudget=500;newGoalLat=20;newGoalLng=15;}render()}},showGoalForm?"✕ ABBRECHEN":"+ ZIEL HINZUFÜGEN")
+    ));
+
+    // Add goal form
+    if(showGoalForm){
+      const emojiOpts=["✈️","🗾","🏝️","🌋","🗽","🌞","🏔️","🏙️","🎭","🍜","🎿","🌊"];
+
+      const ngf=h("div",{style:{background:"#0a0a12",border:"1px solid #2a2a4a",borderRadius:"12px",padding:"16px",marginBottom:"12px",animation:"slideUp 0.2s ease"}});
+      ngf.appendChild(h("div",{style:{color:"#444",fontSize:"10px",letterSpacing:"0.15em",marginBottom:"12px"}},"✨ NEUES ZIEL"));
+
+      // Name input + search status
+      const searchStatus=h("div",{style:{color:"#555",fontSize:"10px",marginTop:"4px",minHeight:"14px"}});
+      const ngi=h("input",{type:"text",value:newGoalName,placeholder:"z.B. Tokyo, Malediven, Paris...",style:{width:"100%",background:"#111",border:"1px solid #2a2a4a",borderRadius:"8px",color:"#fff",padding:"9px 12px",fontSize:"13px"}});
+      ngf.appendChild(h("div",{style:{marginBottom:"4px"}},h("div",{style:{color:"#333",fontSize:"10px",marginBottom:"5px"}},"NAME — tippe einen Ort ein 🔍"),ngi,searchStatus));
+
+      const nbb=h("input",{type:"number",value:newGoalBudget,placeholder:"500",style:{width:"100%",background:"#111",border:"1px solid #2a2a4a",borderRadius:"8px",color:"#fff",padding:"9px 12px",fontSize:"13px"},oninput:e=>newGoalBudget=parseInt(e.target.value)||0});
+      ngf.appendChild(h("div",{style:{marginBottom:"10px"}},h("div",{style:{color:"#333",fontSize:"10px",marginBottom:"5px"}},"EMOJI"),
+        h("div",{style:{display:"flex",gap:"6px",flexWrap:"wrap"}},
+          ...emojiOpts.map(e=>h("button",{class:"btn",style:{width:"34px",height:"34px",borderRadius:"8px",fontSize:"16px",background:newGoalEmoji===e?"#2a1a3a":"#111",border:`1px solid ${newGoalEmoji===e?"#a855f7":"#2a2a4a"}`},onclick:()=>{newGoalEmoji=e;render()}},e))
+        )
+      ));
+      ngf.appendChild(h("div",{style:{marginBottom:"12px"}},h("div",{style:{color:"#333",fontSize:"10px",marginBottom:"5px"}},"SPARZIEL (€)"),nbb));
+
+      // Location picker map
+      const locInfo=h("div",{style:{color:"#555",fontSize:"11px",marginBottom:"8px",minHeight:"16px"}},"Tippe einen Namen ein oder klick auf die Karte");
+      const pickerWrap=h("div",{id:"picker-map",style:{height:"220px",borderRadius:"8px",border:"1px solid #2a2a4a",marginBottom:"12px",overflow:"hidden"}});
+      ngf.appendChild(h("div",{style:{color:"#333",fontSize:"10px",marginBottom:"5px"}},"📍 ORT"));
+      ngf.appendChild(locInfo);
+      ngf.appendChild(pickerWrap);
+
+      ngf.appendChild(h("button",{class:"btn",style:{width:"100%",background:"linear-gradient(135deg,#a855f7,#7c3aed)",borderRadius:"10px",color:"#fff",padding:"12px",fontSize:"13px",fontWeight:"700"},
+        onclick:async()=>{
+          if(!newGoalName.trim())return;
+          const ng={id:uid(),name:newGoalName.trim(),emoji:newGoalEmoji,budget:newGoalBudget,lat:newGoalLat,lng:newGoalLng,tasks:["Flüge buchen","Hotel buchen"],unlocked:false,tasksDone:[]};
+          goals.push(ng);
+          await sbGoals.save({...ng,tasks:JSON.stringify(ng.tasks),tasksDone:JSON.stringify(ng.tasksDone)});
+          newGoalName="";newGoalLat=20;newGoalLng=15;showGoalForm=false;render();
+        }},"💾 ZIEL SPEICHERN"));
+      mapCard.appendChild(ngf);
+
+      // Init picker map + wire up search
+      setTimeout(()=>{
+        if(!document.getElementById("picker-map"))return;
+        const pm=L.map("picker-map",{center:[20,15],zoom:2,zoomControl:true,attributionControl:false});
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{subdomains:"abcd",maxZoom:19}).addTo(pm);
+        let pickerMarker=null;
+
+        const placeMarker=(lat,lng,label)=>{
+          if(pickerMarker)pm.removeLayer(pickerMarker);
+          pickerMarker=L.marker([lat,lng],{icon:L.divIcon({html:`<div style="font-size:22px;filter:drop-shadow(0 2px 6px #00000088)">${newGoalEmoji}</div>`,className:"",iconSize:[28,28],iconAnchor:[14,14]})}).addTo(pm);
+          pm.flyTo([lat,lng],6,{duration:1.2});
+          locInfo.textContent=`✓ ${label} (${(+lat).toFixed(2)}, ${(+lng).toFixed(2)})`;
+          locInfo.style.color="#a855f7";
+        };
+
+        // Forward geocode when user types (debounced)
+        let searchTimer=null;
+        ngi.addEventListener("input",e=>{
+          newGoalName=e.target.value;
+          clearTimeout(searchTimer);
+          if(e.target.value.length<2){searchStatus.textContent="";return;}
+          searchStatus.textContent="🔍 Suche...";
+          searchStatus.style.color="#555";
+          searchTimer=setTimeout(async()=>{
+            try{
+              const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(e.target.value)}&format=json&limit=1&accept-language=de`);
+              const d=await r.json();
+              if(d&&d[0]){
+                newGoalLat=+parseFloat(d[0].lat).toFixed(5);
+                newGoalLng=+parseFloat(d[0].lon).toFixed(5);
+                placeMarker(newGoalLat,newGoalLng,e.target.value);
+                searchStatus.textContent="✓ Gefunden";
+                searchStatus.style.color="#4ade80";
+              } else {
+                searchStatus.textContent="❓ Nicht gefunden";
+                searchStatus.style.color="#f59e0b";
+              }
+            }catch(err){searchStatus.textContent="";}
+          },600);
+        });
+
+        // Click on map → reverse geocode
+        pm.on("click",async e=>{
+          const {lat,lng}=e.latlng;
+          newGoalLat=+lat.toFixed(5);newGoalLng=+lng.toFixed(5);
+          placeMarker(lat,lng,"...");
+          locInfo.textContent="📍 Lade Ortsname...";
+          locInfo.style.color="#555";
+          try{
+            const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=de`);
+            const d=await r.json();
+            const place=d.address?.city||d.address?.town||d.address?.village||d.address?.county||d.address?.state||d.address?.country||"";
+            if(ngi.value===""){ngi.value=place;newGoalName=place;ngi.style.borderColor="#a855f7";setTimeout(()=>{ngi.style.borderColor="#2a2a4a";},1000);}
+            locInfo.textContent=`✓ ${place||"Ort gewählt"} (${newGoalLat.toFixed(2)}, ${newGoalLng.toFixed(2)})`;
+            locInfo.style.color="#a855f7";
+          }catch(err){}
+        });
+      },60);
+    }
+
+    C.appendChild(mapCard);
+
+    // Goal cards
+    [...goals].sort((a,b)=>{const au=isUnlocked(a,total),bu=isUnlocked(b,total);if(au!==bu)return au?-1:1;return a.budget-b.budget;}).forEach(g=>{
+      const unlocked=isUnlocked(g,total);
+      const budgetOk=total>=g.budget;
+      const allTasksDone=g.tasks.every(t=>g.tasksDone.includes(t));
+      const tasksDonePct=g.tasks.length>0?g.tasksDone.length/g.tasks.length:0;
+
+      const card=h("div",{class:`goal-card${unlocked?" unlocked":" locked-card"}`});
+
+      // Header row
+      const hRow=h("div",{style:{display:"flex",alignItems:"center",gap:"12px",marginBottom:"12px"}});
+      hRow.appendChild(h("div",{style:{fontSize:"28px",lineHeight:"1",filter:unlocked?"none":"grayscale(1) opacity(0.4)"}},g.emoji));
+      const titleCol=h("div",{style:{flex:"1"}});
+      titleCol.appendChild(h("div",{style:{fontFamily:"Bebas Neue",fontSize:"20px",color:unlocked?"#4ade80":"#fff",lineHeight:"1"}},g.name));
+      titleCol.appendChild(h("div",{style:{color:"#333",fontSize:"10px",marginTop:"2px"}},`Sparziel: €${g.budget.toLocaleString("de-DE")}`));
+      hRow.appendChild(titleCol);
+      if(unlocked)hRow.appendChild(h("div",{style:{background:"#4ade8022",border:"1px solid #4ade8044",borderRadius:"20px",padding:"4px 10px",color:"#4ade80",fontSize:"10px",fontWeight:"700",letterSpacing:"0.1em"}},"✅ FREI"));
+      else hRow.appendChild(h("div",{style:{background:"#1a0d0d",border:"1px solid #ff444422",borderRadius:"20px",padding:"4px 10px",color:"#ff444488",fontSize:"10px",letterSpacing:"0.1em"}},"🔒 GESPERRT"));
+      card.appendChild(hRow);
+
+      // Budget progress
+      const bPct=Math.min(total/g.budget*100,100);
+      card.appendChild(h("div",{style:{marginBottom:"10px"}},
+        h("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:"4px"}},
+          h("span",{style:{color:"#333",fontSize:"10px"}},"💰 SPARTOPF"),
+          h("span",{style:{color:budgetOk?"#4ade80":"#f59e0b",fontSize:"10px"}},(budgetOk?"✅ ":"")+`€${fmt(total)} / €${g.budget.toLocaleString("de-DE")}`)
+        ),
+        h("div",{style:{height:"5px",background:"#111",borderRadius:"3px",overflow:"hidden"}},
+          h("div",{style:{height:"100%",width:`${bPct}%`,background:budgetOk?"#4ade80":"linear-gradient(90deg,#38bdf8,#a855f7)",borderRadius:"3px",transition:"width 0.6s ease"}})
+        )
+      ));
+
+      // Tasks
+      if(g.tasks.length){
+        card.appendChild(h("div",{style:{color:"#333",fontSize:"10px",letterSpacing:"0.1em",marginBottom:"6px"}},`📋 AUFGABEN (${g.tasksDone.length}/${g.tasks.length})`));
+        const tList=h("div",{style:{display:"flex",flexDirection:"column"}});
+        g.tasks.forEach(task=>{
+          const done=g.tasksDone.includes(task);
+          const row=h("div",{class:"task-row",onclick:()=>toggleTask(g.id,task,total)});
+          row.appendChild(h("div",{class:`task-box${done?" done":""}`},done?"✓":""));
+          row.appendChild(h("div",{style:{fontSize:"12px",color:done?"#4ade80":"#888",textDecoration:done?"line-through":"none",flex:"1"}},task));
+          tList.appendChild(row);
+        });
+        card.appendChild(tList);
+      }
+
+      // Delete btn
+      card.appendChild(h("div",{style:{marginTop:"10px",textAlign:"right"}},
+        h("button",{class:"btn",style:{background:"#150505",borderRadius:"6px",color:"#ff6666",padding:"4px 9px",fontSize:"10px"},onclick:()=>{goalDeleteId=g.id;render()}},"🗑️")
+      ));
+
+      C.appendChild(card);
+    });
+  }
+
+
+  if(tab==="history"){
+    if(!deps.length)C.appendChild(h("div",{style:{textAlign:"center",padding:"50px",color:"#222"}},h("div",{style:{fontFamily:"Bebas Neue",fontSize:"20px"}},"NOCH KEINE EINZAHLUNGEN")));
+    else{const list=h("div",{style:{display:"flex",flexDirection:"column",gap:"8px"}});
+      [...deps].sort((a,b)=>b.year!==a.year?b.year-a.year:b.month-a.month).forEach(d=>{
+        list.appendChild(h("div",{style:{background:"#0a0a12",border:`1px solid ${COL[d.person]}18`,borderLeft:`3px solid ${COL[d.person]}`,borderRadius:"10px",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"8px"}},
+          h("div",{style:{display:"flex",gap:"12px",alignItems:"center",flexWrap:"wrap"}},
+            h("span",{style:{color:COL[d.person],fontFamily:"Bebas Neue",fontSize:"16px"}},d.person),
+            h("span",{style:{color:"#2a2a4a",fontSize:"11px"}},`${MO[d.month-1]} ${d.year}`),
+            d.note?h("span",{style:{color:"#2a2a4a",fontSize:"11px"}},`· ${d.note}`):null
+          ),
+          h("div",{style:{display:"flex",gap:"12px",alignItems:"center"}},
+            h("span",{style:{color:"#fff",fontFamily:"Bebas Neue",fontSize:"20px"}},`€${fmt(d.amount)}`),
+            h("button",{class:"btn",style:{background:"#150505",borderRadius:"6px",color:"#ff6666",padding:"4px 9px",fontSize:"11px"},onclick:()=>{delId=d.id;render()}},"🗑️"))
+        ));});C.appendChild(list);}
+  }
+
+  app.appendChild(C);
+
+  if(goalDeleteId){
+    app.appendChild(h("div",{style:{position:"fixed",inset:"0",background:"#00000099",display:"flex",alignItems:"center",justifyContent:"center",zIndex:"100",backdropFilter:"blur(4px)"}},
+      h("div",{style:{background:"#0d0d1a",border:"1px solid #ff444433",borderRadius:"18px",padding:"32px",maxWidth:"300px",width:"90%",textAlign:"center",animation:"slideUp 0.2s ease"}},
+        h("div",{style:{fontSize:"32px",marginBottom:"12px"}},"🗺️"),
+        h("div",{style:{color:"#fff",fontFamily:"Bebas Neue",fontSize:"22px",marginBottom:"8px"}},"ZIEL LÖSCHEN?"),
+        h("div",{style:{color:"#444",fontSize:"12px",marginBottom:"22px"}},"Das Ziel wird für beide gelöscht."),
+        h("div",{style:{display:"flex",gap:"10px"}},
+          h("button",{class:"btn",style:{flex:"1",background:"#1a1a2e",borderRadius:"10px",color:"#666",padding:"12px"},onclick:()=>{goalDeleteId=null;render()}},"NEIN"),
+          h("button",{class:"btn",style:{flex:"1",background:"#ff4444",borderRadius:"10px",color:"#fff",padding:"12px",fontWeight:"700"},onclick:async()=>{
+            await sbGoals.del(goalDeleteId);goals=goals.filter(g=>g.id!==goalDeleteId);goalDeleteId=null;render();
+          }},"LÖSCHEN"))
+      )));
+  }
+
+  if(delId){
+    app.appendChild(h("div",{style:{position:"fixed",inset:"0",background:"#00000099",display:"flex",alignItems:"center",justifyContent:"center",zIndex:"100",backdropFilter:"blur(4px)"}},
+      h("div",{style:{background:"#0d0d1a",border:"1px solid #ff444433",borderRadius:"18px",padding:"32px",maxWidth:"300px",width:"90%",textAlign:"center",animation:"slideUp 0.2s ease"}},
+        h("div",{style:{fontSize:"32px",marginBottom:"12px"}},"🗑️"),
+        h("div",{style:{color:"#fff",fontFamily:"Bebas Neue",fontSize:"22px",marginBottom:"8px"}},"LÖSCHEN?"),
+        h("div",{style:{color:"#444",fontSize:"12px",marginBottom:"22px"}},"Wird bei beiden gelöscht."),
+        h("div",{style:{display:"flex",gap:"10px"}},
+          h("button",{class:"btn",style:{flex:"1",background:"#1a1a2e",borderRadius:"10px",color:"#666",padding:"12px"},onclick:()=>{delId=null;render()}},"NEIN"),
+          h("button",{class:"btn",style:{flex:"1",background:"#ff4444",borderRadius:"10px",color:"#fff",padding:"12px",fontWeight:"700"},onclick:async()=>{await sb.del(delId);deps=deps.filter(d=>d.id!==delId);delId=null;render()}},"LÖSCHEN"))
+      )));
+  }
+}
+
+Promise.all([sb.all(),loadGoals()]).then(([d])=>{deps=d||[];loading=false;render();});
+</script>
+</body>
+</html>
