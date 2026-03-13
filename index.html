@@ -632,19 +632,18 @@ function render(){
     const justStarted=totalMonths===1;
     const streakEmoji=streak>=12?"🔥🔥🔥":streak>=6?"🔥🔥":streak>=3?"🔥":"❄️";
 
-    let roast="";let roastColor="#f59e0b";
+    let roast="Solide. Nicht aufregend, aber solide. Wie ein beiger Teppich. Aber finanziell klug! 🧶";let roastColor="#f59e0b";
     if(streak===0&&total===0){roast="Noch kein einziger Cent? Die Couch ruft, aber das Ziel auch... 👀";roastColor="#ff6666";}
-    else if(justStarted){roast="Erster Monat! Das Schlimmste liegt noch vor euch – die Überweisungen im Dezember. 😅";}
     else if(timMissed&&total>0){roast="Tim hat noch nie eingezahlt. Lena finanziert also euer beider Urlaub? Danke, Tim. 🙃";roastColor=COL.Tim;}
     else if(lenaMissed&&total>0){roast="Lena hat noch nie eingezahlt. Das Sparplan-Duo... mit 50% Ausfallquote. 📉";roastColor=COL.Lena;}
-    else if(timBig){roast="Tim zahlt deutlich mehr ein. Lena schuldet Tim mindestens einen Kaffee. ☕";roastColor=COL.Tim;}
-    else if(lenaBig){roast="Lena dominiert das Sparbuch. Tim, alles gut bei dir? 👀";roastColor=COL.Lena;}
-    else if(bothEqual){roast="Beide exakt gleich viel – entweder sehr romantisch oder ihr habt euch abgesprochen. 🤝";}
+    else if(justStarted){roast="Erster Monat! Das Schlimmste liegt noch vor euch – die Überweisungen im Dezember. 😅";}
     else if(streak>=12){roast="12+ Monate am Stück! Ihr seid offiziell spießiger als eure Eltern. Stolz auf euch. 🏆";}
     else if(streak>=6){roast="6 Monate Streak! Habt ihr eigentlich noch Spaß im Leben oder nur noch ETFs? 😄";}
     else if(streak>=3){roast="3 Monate Streak – das Kaffee-Budget scheint zu leiden. Weiter so! ☕📉";}
     else if(streak===0&&total>0){roast="Ähm... letzten Monat ausgefallen? Die Rendite weint still in der Ecke. 💧";}
-    else{roast="Solide. Nicht aufregend, aber solide. Wie ein beiger Teppich. Aber finanziell klug! 🧶";}
+    else if(lenaBig){roast="Lena dominiert das Sparbuch. Tim, alles gut bei dir? 👀";roastColor=COL.Lena;}
+    else if(timBig){roast="Tim zahlt deutlich mehr ein. Lena schuldet Tim mindestens einen Kaffee. ☕";roastColor=COL.Tim;}
+    else if(bothEqual){roast="Beide exakt gleich viel – entweder sehr romantisch oder ihr habt euch abgesprochen. 🤝";}
 
     const streakBlock=h("div",{style:{background:"#0a0a12",border:"1px solid #1a1a2e",borderRadius:"16px",padding:"18px 20px",marginBottom:"16px",display:"flex",flexDirection:"column",gap:"12px"}});
 
@@ -747,6 +746,44 @@ function render(){
       ));
     }
     C.appendChild(dc);
+
+    // ── WAS KÖNNTET IHR EUCH SCHON LEISTEN? ─────────────────────────────────
+    if(total>0){
+      const kaufItems=[
+        {emoji:"☕",name:"Kaffees bei Starbucks",preis:5.5,funny:"\"Ich brauch keinen Urlaub, ich hab Oat Milk Latte.\""},
+        {emoji:"🍕",name:"Pizzen (geliefert)",preis:14,funny:"Genug Mozzarella um darin zu ertrinken."},
+        {emoji:"✈️",name:"Flüge nach Mallorca (p.P.)",preis:89,funny:"Direkt ohne \"aber wir schauen noch kurz\"!"},
+        {emoji:"🏨",name:"Hotelnächte (Mitteklasse)",preis:95,funny:"Mit Frühstück. Und du musst nicht aufräumen."},
+        {emoji:"🎢",name:"Tage im Europapark",preis:59,funny:"Inklusive dem Gefühl, Geld für Warteschlangen zu zahlen."},
+        {emoji:"🍣",name:"Sushi-Abende für 2",preis:55,funny:"Ohne schlechtes Gewissen beim dritten Nachschlag."},
+        {emoji:"🚂",name:"Zugtickets (ICE, Spar)",preis:29,funny:"Du könntest einmal quer durch Deutschland und nochmal zurück."},
+        {emoji:"🎬",name:"Kinoabende inkl. Popcorn",preis:28,funny:"Popcorn kostet mehr als der Film. Das ist Kapitalismus."},
+      ];
+      const kk=h("div",{class:"card"});
+      kk.appendChild(h("div",{style:{color:"#333",fontSize:"10px",letterSpacing:"0.2em",marginBottom:"4px"}},"🛍️ WAS KÖNNT IHR EUCH SCHON LEISTEN?"));
+      kk.appendChild(h("div",{style:{color:"#1a1a2e",fontSize:"10px",marginBottom:"16px"}},`Mit euren aktuellen €${fmt(total)}`));
+      kaufItems.forEach(item=>{
+        const anzahl=Math.floor(total/item.preis);
+        if(anzahl<1)return;
+        const pct=Math.min(anzahl/(Math.ceil(anzahl/10)*10)*100,100);
+        const row=h("div",{style:{marginBottom:"14px"}});
+        const labelWrap=h("span",{style:{fontSize:"13px"}});
+        labelWrap.appendChild(document.createTextNode(item.emoji+" "));
+        labelWrap.appendChild(h("span",{style:{color:"#888",fontSize:"11px"}},item.name));
+        row.appendChild(h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:"5px"}},
+          labelWrap,
+          h("span",{style:{color:"#fff",fontFamily:"Bebas Neue",fontSize:"18px"}},`× ${anzahl.toLocaleString("de-DE")}`)
+        ));
+        const barWrap=h("div",{style:{height:"5px",background:"#111",borderRadius:"3px",marginBottom:"4px",overflow:"hidden"}});
+        const bar=h("div",{style:{height:"100%",width:"0%",background:"linear-gradient(90deg,#38bdf8,#f472b6)",borderRadius:"3px",transition:"width 0.9s ease"},"data-pct":`${pct}`});
+        barWrap.appendChild(bar);row.appendChild(barWrap);
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{if(bar.isConnected)bar.style.width=`${pct}%`;}));
+        row.appendChild(h("div",{style:{color:"#555",fontSize:"10px",fontStyle:"italic"}},item.funny));
+        kk.appendChild(row);
+      });
+      C.appendChild(kk);
+    }
+    // ────────────────────────────────────────────────────────────────────────
   }
 
   if(tab==="forecast"){
@@ -754,7 +791,26 @@ function render(){
     const pts=[{label:"Heute",total:+(tv+lv2).toFixed(2)}];let y=now.getFullYear(),m=now.getMonth()+1;
     for(let i=0;i<120;i++){tv=(tv+extra/2)*(1+MR);lv2=(lv2+extra/2)*(1+MR);m++;if(m>12){m=1;y++;}pts.push({label:`${MO[m-1]} ${String(y).slice(2)}`,total:+(tv+lv2).toFixed(2)});if(tv+lv2>=GOAL)break;}
     const ll=pts[pts.length-1].label;
+    const monthsLeft=pts.length-1;
+    // Spargeschwindigkeit
+    const speeds=[
+      {max:6,icon:"🚀",name:"RAKETE",color:"#a855f7",desc:"Seid ihr sicher, dass das Geld noch da ist?"},
+      {max:12,icon:"⚡",name:"BLITZ",color:"#f59e0b",desc:"Das ist schneller als die meisten Versprechen."},
+      {max:18,icon:"🚄",name:"ICE",color:"#38bdf8",desc:"Pünktlich. Außer wenn Deutsche Bahn involviert."},
+      {max:30,icon:"🚲",name:"E-BIKE",color:"#4ade80",desc:"Umweltfreundlich und auf Kurs. Respekt."},
+      {max:48,icon:"🐢",name:"GEMÜTLICH",color:"#94a3b8",desc:"Rom wurde auch nicht an einem Tag gebaut."},
+      {max:999,icon:"🐌",name:"SCHNECKE",color:"#64748b",desc:"Vielleicht mal das Abo-Chaos durchforsten?"},
+    ];
+    const spd=speeds.find(s=>monthsLeft<=s.max)||speeds[speeds.length-1];
     const fc=h("div",{class:"card"});
+    // Spargeschwindigkeit banner
+    fc.appendChild(h("div",{style:{background:`linear-gradient(135deg,${spd.color}11,${spd.color}05)`,border:`1px solid ${spd.color}33`,borderRadius:"12px",padding:"14px 16px",marginBottom:"18px",display:"flex",alignItems:"center",gap:"14px"}},
+      h("div",{style:{fontSize:"36px",lineHeight:"1"}},spd.icon),
+      h("div",{},
+        h("div",{style:{color:spd.color,fontFamily:"Bebas Neue",fontSize:"22px",letterSpacing:"0.05em"}},`SPARGESCHWINDIGKEIT: ${spd.name}`),
+        h("div",{style:{color:`${spd.color}88`,fontSize:"11px",marginTop:"2px"}},spd.desc)
+      )
+    ));
     fc.appendChild(h("div",{style:{color:"#333",fontSize:"10px",letterSpacing:"0.2em",marginBottom:"14px"}},"🔮 WANN ERREICHEN WIR €3.000?"));
     fc.appendChild(h("div",{style:{marginBottom:"16px"}},
       h("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:"6px"}},
