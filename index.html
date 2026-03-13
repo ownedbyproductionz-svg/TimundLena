@@ -609,6 +609,72 @@ function render(){
   )));
   app.appendChild(sg);
 
+  // ── FUN BLOCK: Sparstreak + Motivations-Roast ──────────────────────────────
+  {
+    // Build a sorted list of all (year*100+month) keys that have deposits
+    const monthKeys=new Set(deps.map(d=>d.year*100+d.month));
+    const now2=new Date();
+    let streak=0;
+    for(let i=0;i<36;i++){
+      const d=new Date(now2.getFullYear(),now2.getMonth()-i,1);
+      const key=d.getFullYear()*100+(d.getMonth()+1);
+      if(monthKeys.has(key))streak++;
+      else break;
+    }
+    const totalMonths=monthKeys.size;
+
+    // Roast messages based on different funny situations
+    const timMissed=tD.length===0;
+    const lenaMissed=lD.length===0;
+    const timBig=tV>lV*1.5&&lV>0;
+    const lenaBig=lV>tV*1.5&&tV>0;
+    const bothEqual=Math.abs(tV-lV)<5&&total>0;
+    const justStarted=totalMonths===1;
+    const streakEmoji=streak>=12?"🔥🔥🔥":streak>=6?"🔥🔥":streak>=3?"🔥":"❄️";
+
+    let roast="";let roastColor="#f59e0b";
+    if(streak===0&&total===0){roast="Noch kein einziger Cent? Die Couch ruft, aber das Ziel auch... 👀";roastColor="#ff6666";}
+    else if(justStarted){roast="Erster Monat! Das Schlimmste liegt noch vor euch – die Überweisungen im Dezember. 😅";}
+    else if(timMissed&&total>0){roast="Tim hat noch nie eingezahlt. Lena finanziert also euer beider Urlaub? Danke, Tim. 🙃";roastColor=COL.Tim;}
+    else if(lenaMissed&&total>0){roast="Lena hat noch nie eingezahlt. Das Sparplan-Duo... mit 50% Ausfallquote. 📉";roastColor=COL.Lena;}
+    else if(timBig){roast="Tim zahlt deutlich mehr ein. Lena schuldet Tim mindestens einen Kaffee. ☕";roastColor=COL.Tim;}
+    else if(lenaBig){roast="Lena dominiert das Sparbuch. Tim, alles gut bei dir? 👀";roastColor=COL.Lena;}
+    else if(bothEqual){roast="Beide exakt gleich viel – entweder sehr romantisch oder ihr habt euch abgesprochen. 🤝";}
+    else if(streak>=12){roast="12+ Monate am Stück! Ihr seid offiziell spießiger als eure Eltern. Stolz auf euch. 🏆";}
+    else if(streak>=6){roast="6 Monate Streak! Habt ihr eigentlich noch Spaß im Leben oder nur noch ETFs? 😄";}
+    else if(streak>=3){roast="3 Monate Streak – das Kaffee-Budget scheint zu leiden. Weiter so! ☕📉";}
+    else if(streak===0&&total>0){roast="Ähm... letzten Monat ausgefallen? Die Rendite weint still in der Ecke. 💧";}
+    else{roast="Solide. Nicht aufregend, aber solide. Wie ein beiger Teppich. Aber finanziell klug! 🧶";}
+
+    const streakBlock=h("div",{style:{background:"#0a0a12",border:"1px solid #1a1a2e",borderRadius:"16px",padding:"18px 20px",marginBottom:"16px",display:"flex",flexDirection:"column",gap:"12px"}});
+
+    // Row 1: Streak + Total months
+    const row1=h("div",{style:{display:"flex",gap:"10px"}});
+    [
+      {icon:streakEmoji,label:"MONATS-STREAK",value:`${streak} Monat${streak!==1?"e":""}`,color:streak>=3?"#f97316":"#555"},
+      {icon:"📆",label:"MONATE GESAMT",value:`${totalMonths} aktiv`,color:"#888"},
+      {icon:"🎯",label:"NOCH ZUM ZIEL",value:`€${fmt(Math.max(0,GOAL-total))}`,color:total>=GOAL?"#4ade80":"#f59e0b"},
+    ].forEach(({icon,label,value,color})=>{
+      row1.appendChild(h("div",{style:{flex:"1",background:"#0d0d1a",border:"1px solid #1a1a2e",borderRadius:"10px",padding:"10px 12px",textAlign:"center"}},
+        h("div",{style:{fontSize:"20px",marginBottom:"4px"}},icon),
+        h("div",{style:{color:"#2a2a4a",fontSize:"9px",letterSpacing:"0.15em",marginBottom:"3px"}},label),
+        h("div",{style:{color,fontFamily:"Bebas Neue",fontSize:"16px"}},value)
+      ));
+    });
+    streakBlock.appendChild(row1);
+
+    // Row 2: Roast message
+    const roastEl=h("div",{style:{background:"#07070f",border:`1px solid ${roastColor}22`,borderRadius:"10px",padding:"12px 14px",fontSize:"12px",color:roastColor,lineHeight:"1.6",fontStyle:"italic"}},
+      h("span",{style:{color:`${roastColor}66`,marginRight:"6px",fontStyle:"normal",fontFamily:"Bebas Neue",fontSize:"11px",letterSpacing:"0.15em"}},"SPARPLAN-KOMMENTAR"),
+      h("br"),
+      roast
+    );
+    streakBlock.appendChild(roastEl);
+
+    app.appendChild(streakBlock);
+  }
+  // ───────────────────────────────────────────────────────────────────────────
+
   // Tab bar
   const tb=h("div",{style:{display:"flex",gap:"6px",marginBottom:"20px",flexWrap:"wrap"}});
   [["overview","📊 Übersicht"],["forecast","🔮 Prognose"],["vs","💡 ETF vs Schublade"],["goals","🗺️ Ziele"],["activities","🎲 Unternehmungen"],["history","📋 Verlauf"]].forEach(([t,l])=>{
