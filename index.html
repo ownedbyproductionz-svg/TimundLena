@@ -567,23 +567,44 @@ function render(){
   }
 
   // KAUFEN
-  if(total>10){
-    const items=[{emoji:"☕",name:"Starbucks",preis:5.5,funny:"„Ich brauch keinen Urlaub, ich hab Oat Milk Latte.""},{emoji:"🍕",name:"Pizzen geliefert",preis:14,funny:"Genug Mozzarella um darin zu schwimmen."},{emoji:"✈️",name:"Mallorca-Flüge p.P.",preis:89,funny:"Direkt buchen, ohne „wir schauen kurz"."},{emoji:"🏨",name:"Hotelnächte",preis:95,funny:"Mit Frühstück. Du musst nicht aufräumen."},{emoji:"🎢",name:"Europapark-Tage",preis:59,funny:"Inklusive Warteschlangen-Meditationszeit."},{emoji:"🍣",name:"Sushi-Abende für 2",preis:55,funny:"Ohne Schuldgefühle beim dritten Mal."}].filter(it=>Math.floor(total/it.preis)>=1);
-    if(items.length){
-      const kg=h("div",{class:"kaufen-grid"});
-      const clrs=["var(--tim)","var(--lena)","var(--green)","var(--amber)","var(--tim)","var(--lena)"];
-      items.slice(0,6).forEach((item,idx)=>{
-        const anzahl=Math.floor(total/item.preis);
-        const cell=h("div",{class:"k-cell"});
-        cell.appendChild(h("div",{class:"k-emoji"},item.emoji));
-        cell.appendChild(h("div",{class:"k-name"},item.name));
-        cell.appendChild(h("div",{class:"k-count",style:{color:clrs[idx]}},`×${anzahl.toLocaleString("de-DE")}`));
-        const kb=h("div",{class:"k-bar"});const kbf=h("div",{class:"k-bar-fill",style:{width:"0%",background:clrs[idx]}});kb.appendChild(kbf);cell.appendChild(kb);
-        requestAnimationFrame(()=>requestAnimationFrame(()=>{if(kbf.isConnected)kbf.style.width="100%"}));
-        cell.appendChild(h("div",{class:"k-funny"},item.funny));
-        kg.appendChild(cell);
-      });
-      W.appendChild(kg);
+const items = [
+  {
+    emoji: "☕",
+    name: "Starbucks",
+    preis: 5.5,
+    funny: "„Ich brauch keinen Urlaub, ich hab Oat Milk Latte.“"
+  },
+  {
+    emoji: "🍕",
+    name: "Pizzen geliefert",
+    preis: 14,
+    funny: "Genug Mozzarella um darin zu schwimmen."
+  },
+  {
+    emoji: "✈️",
+    name: "Mallorca-Flüge p.P.",
+    preis: 89,
+    funny: "Direkt buchen, ohne „wir schauen kurz“."
+  },
+  {
+    emoji: "🏨",
+    name: "Hotelnächte",
+    preis: 95,
+    funny: "Mit Frühstück. Du musst nicht aufräumen."
+  },
+  {
+    emoji: "🎢",
+    name: "Europapark-Tage",
+    preis: 59,
+    funny: "Inklusive Warteschlangen-Meditationszeit."
+  },
+  {
+    emoji: "🍣",
+    name: "Sushi-Abende für 2",
+    preis: 55,
+    funny: "Ohne Schuldgefühle beim dritten Mal."
+  }
+].filter(it => Math.floor(total / it.preis) >= 1);
     }
   }
 
